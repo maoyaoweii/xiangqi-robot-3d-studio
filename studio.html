@@ -349,21 +349,38 @@
   </style>
 </head>
 <body>
+  <style>
+    .asm-toolbar {
+      position: absolute; left: 10px; top: 10px; right: 10px; z-index: 6;
+      display: none; flex-wrap: wrap; gap: 5px; align-items: center;
+      padding: 6px 8px; border-radius: 12px;
+      background: rgba(10,20,22,.68); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(189,245,228,.16); color: #e2f7f1; font-size: 11px;
+    }
+    .asm-toolbar.active { display: flex; }
+    .asm-chip {
+      border: 1px solid rgba(189,245,228,.25); background: rgba(19,132,111,.24); color: #d6f5ec;
+      border-radius: 8px; padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .asm-chip:hover { background: rgba(19,132,111,.55); border-color: #7ee3cb; }
+    .asm-chip.warn { background: rgba(194,65,79,.28); border-color: rgba(240,120,130,.35); color: #ffd4d8; }
+    #camOverlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  </style>
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <h1>🦀 光电象棋 · Rust 真3D工程工坊</h1>
+        <h1>🦀 光电象棋 · Rust 3D 造车与仿真工坊</h1>
         <span class="pill" id="rustPill">连接 Rust 内核中...</span>
         <span class="pill" id="wasmPill">WASM 物理加载中...</span>
-        <span class="pill ok">WebGL 真3D · 双视角实时渲染</span>
+        <span class="pill ok" id="visionTopPill">👁️ 视觉: YOLO11s 棋字</span>
       </div>
       <div class="actions">
-        <button class="btn primary" id="runBtn">▶ 运行</button>
+        <button class="btn gold" id="workspaceModeBtn">🔧 3D 装配空间</button>
+        <button class="btn primary" id="runBtn">▶ 自动运行</button>
         <button class="btn" id="stepBtn">⏭ +25ms</button>
         <button class="btn" id="resetBtn">↺ 重置</button>
         <button class="btn" id="camModeBtn">🎥 视角: 自由环绕3D</button>
         <button class="btn" id="exportJsonBtn">📦 导出总装</button>
-        <a class="btn" href="3d.html" style="text-decoration:none;">高级工坊</a>
       </div>
     </header>
 
@@ -371,23 +388,38 @@
       <!-- 左侧：真3D WebGL 物理视口 + 第一人称真3D车载相机 -->
       <section class="card">
         <div class="card-head">
-          <h2>真 3D 物理实验场 (拖拽旋转3D视角 · 滚轮缩放)</h2>
-          <span class="mono" id="fieldMeta">3000×2000×300mm · 实体建模渲染</span>
+          <h2 id="fieldTitle">可动 3D 赛场与装配空间 (左键点选/拖动组件 · 空处拖拽旋转视角)</h2>
+          <span class="mono" id="fieldMeta">3000×2000×300mm · Rust 实体装配</span>
         </div>
         <div class="canvas-wrap">
+          <div class="asm-toolbar" id="asmToolbar">
+            <span style="font-weight:700;color:#7ee3cb;">✋ 手造/拖装:</span>
+            <button class="asm-chip" data-spawn="chamfered_rect">+ 装甲板</button>
+            <button class="asm-chip" data-spawn="u_scoop">+ 推斗翼</button>
+            <button class="asm-chip" data-spawn="l_bracket">+ 支架</button>
+            <button class="asm-chip" data-spawn="gear_wheel">+ 齿轮</button>
+            <button class="asm-chip" data-spawn="u_channel">+ 电池槽</button>
+            <button class="asm-chip" id="asmAddWheelBtn">+ 车轮</button>
+            <span id="asmSelBadge" style="margin-left:auto;color:#f5d084;font-family:ui-monospace,Consolas,monospace;">未选中组件(点击车上组件/轮胎选中拖动)</span>
+            <button class="asm-chip" id="asmUpBtn" title="高度 +5mm">+Y</button>
+            <button class="asm-chip" id="asmDownBtn" title="高度 -5mm">-Y</button>
+            <button class="asm-chip" id="asmRotBtn" title="偏航旋转 +15°">↻15°</button>
+            <button class="asm-chip warn" id="asmDelBtn" title="删除选中组件">删除</button>
+          </div>
           <canvas id="fieldCanvas" width="900" height="520"></canvas>
-          <div class="cam-hud" id="orbitHud">拖拽旋转3D · 滚轮缩放 · WASD驾驶 · Q/E横移(麦轮/全向)</div>
+          <div class="cam-hud" id="orbitHud">拖拽旋转3D · 滚轮缩放 · 装配模式下点击车上组件可直接拖动拼装</div>
           <div class="dpad" aria-label="3D驾驶方向键">
             <span></span><button id="padUp" title="前进 (W)">▲</button><span></span>
             <button id="padLeft" title="左转 (A)">◀</button><button id="padDown" title="后退 (S)">▼</button><button id="padRight" title="右转 (D)">▶</button>
           </div>
         </div>
         <div class="card-head">
-          <h2>第一人称真 3D 车载相机视角 (上下拖拽调俯仰 · 滚轮调机高)</h2>
+          <h2>第一人称真 3D 车载相机视角 (视觉模型实时识别叠加)</h2>
           <span class="mono" id="camMeta">高 185mm · 俯仰 22° · FOV 110°</span>
         </div>
         <div class="canvas-wrap">
           <canvas id="camCanvas" width="720" height="240" style="cursor:ns-resize;"></canvas>
+          <canvas id="camOverlay" width="720" height="240"></canvas>
           <div class="cam-hud" id="fpHud">第一人称真 3D 机位 · 速度 0.00 m/s · 携带 0 枚</div>
         </div>
         <div class="telemetry">
@@ -400,14 +432,14 @@
         </div>
       </section>
 
-      <!-- 右侧：极简四标签高自由度工作台 -->
+      <!-- 右侧：五步造车与运行工作台 -->
       <section class="card">
         <div class="tabs">
-          <button class="tab-btn active" data-tab="modules">🧩 自由装配</button>
-          <button class="tab-btn" data-tab="workshop">🏭 实体造车&赛规</button>
-          <button class="tab-btn" data-tab="cad">📐 CAD 建模</button>
-          <button class="tab-btn" data-tab="opt">🚀 Rust 寻优</button>
-          <button class="tab-btn" data-tab="code">💻 仿真板&MCP</button>
+          <button class="tab-btn active" data-tab="modules">🚗 底盘轮系</button>
+          <button class="tab-btn" data-tab="cad">🧱 创造与组装</button>
+          <button class="tab-btn" data-tab="vision">👁️ 视觉模型</button>
+          <button class="tab-btn" data-tab="code">💻 编写代码</button>
+          <button class="tab-btn" data-tab="workshop">🏁 实车赛规</button>
         </div>
 
         <div class="tab-pane active" id="tab-modules">
@@ -761,13 +793,40 @@
           </div>
         </div>
 
-        <div class="tab-pane" id="tab-opt">
-          <div class="row-actions">
-            <button class="btn gold" id="optRunBtn">🦀 Rust 多核并行寻优 (16预设+进化寻优×4种子)</button>
-            <button class="btn" id="headlessRunBtn">⚡ 运行单场 120s 物理评估</button>
+        <div class="tab-pane" id="tab-vision">
+          <div class="section-title">车载视觉识别模型选择 (实时影响第一人称识别框与自动控制)</div>
+          <div class="form-grid">
+            <div class="field"><label>视觉识别模型</label>
+              <select id="visionModel">
+                <option value="yolo11s_pro" selected>YOLO11s 棋字分类模型 (高精度·按帅车马炮分值排序)</option>
+                <option value="yolo11n_fast">YOLO11n 轻量高速模型 (45FPS·低延迟快扫)</option>
+                <option value="classic_hsv">经典 HSV 色块+圆度轮廓 (无需神经网络)</option>
+                <option value="stereo_depth">双目立体深度融合 (近距精准+遮挡过滤)</option>
+                <option value="yolo_http_bridge">本地真实 YOLO 权重桥接 (yolo_bridge.py)</option>
+              </select>
+            </div>
+            <div class="field"><label>置信度阈值 (Conf)</label>
+              <input type="number" id="visionConf" value="0.45" min="0.15" max="0.95" step="0.05" />
+            </div>
+            <div class="field"><label>叠加框显示</label>
+              <select id="visionHudMode">
+                <option value="boxes" selected>显示检测框+棋字+距离</option>
+                <option value="crosshair">仅显示中心瞄准线</option>
+                <option value="off">关闭 HUD 叠加</option>
+              </select>
+            </div>
           </div>
-          <div class="mono" id="optStatus">点击上方按钮，直接在 Rust 原生引擎并行评估并排序最优结构。</div>
-          <div class="list-box" id="optList"></div>
+          <div class="list-box" id="visionModelCards">
+            <div class="list-item"><span><b>YOLO11s 棋字分类模型</b><small>可识别「帅10/车5/马3/炮3/相2/仕2/兵1」，自动优先抓取高分红子，支持红/黑双色区分</small></span><span class="pill ok">推荐</span></div>
+            <div class="list-item"><span><b>YOLO11n 轻量高速模型</b><small>高帧率低延迟目标框检测，适合高速全向突击与动态避障</small></span><span class="pill">45 FPS</span></div>
+            <div class="list-item"><span><b>经典 HSV + 轮廓识别</b><small>传统 OpenCV/K230 阈值分割，抗算力瓶颈但受远距离与边角遮挡影响较大</small></span><span class="pill">60 FPS</span></div>
+            <div class="list-item"><span><b>本地真实 YOLO 桥接 (http://127.0.0.1:8765/predict)</b><small>运行 start_yolo_bridge.ps1 后，直接把第一人称 3D 车载画面推流至真实 PyTorch YOLO 权重推理</small></span><span class="pill" id="yoloBridgePill">未连接</span></div>
+          </div>
+          <div class="row-actions">
+            <button class="btn" id="probeYoloBtn">🔌 测试本地 YOLO 桥接</button>
+            <button class="btn primary" id="visionAutoRunBtn" style="flex:1;">🤖 应用视觉模型 + 烧录代码并自动运行</button>
+          </div>
+          <div class="mono" id="visionStatus">当前模型: YOLO11s 棋字分类 · 实时检测画面叠加在左下「第一人称真 3D 车载相机」上</div>
         </div>
 
         <div class="tab-pane" id="tab-code">
@@ -954,6 +1013,17 @@ function loop(board) {
       rustOk: false,
       wasm: null,
       wasmReady: false,
+      workspaceMode: "arena", // "arena" | "assembly"
+      selectedItem: null,     // { kind: "part" | "wheel", id: string }
+      vision: {
+        model: "yolo11s_pro",
+        conf: 0.45,
+        hudMode: "boxes",
+        bridgeOnline: false,
+        bridgeBusy: false,
+        lastBridgeTs: 0,
+        lastDets: [],
+      },
       wasmTele: { tractionN: 0, slip: 0, driveN: 0, slipCount: 0, busV: 11.1, curA: 0.4, batPct: 100, wrongPieces: 0, netScore: 0 },
       workshop: {
         bomSelected: { m_mg513: 4, b_k230: 1, bat_3s: 1, w_mec60: 1, drv_tb6612: 2, sen_vl53: 1, f_m3kit: 1, w_xt60: 1 },
@@ -1372,7 +1442,7 @@ function loop(board) {
     };
 
     function createRenderer(canvas) {
-      const gl = canvas.getContext("webgl", { antialias: true, preserveDrawingBuffer: false });
+      const gl = canvas.getContext("webgl", { antialias: true, preserveDrawingBuffer: true });
       if (!gl) return null;
       const vs = `
         attribute vec3 aPos;
@@ -1767,6 +1837,22 @@ function loop(board) {
           }
           for (const w of wheelList) {
             drawSingleCustomWheel(w);
+            if (state.workspaceMode === "assembly" && state.selectedItem?.kind === "wheel" && state.selectedItem.id === w.id) {
+              drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(w.x_m, w.radius_m * 0.12, w.z_m, 0, w.radius_m * 2.5, 0.005, w.radius_m * 2.5)), [0.98, 0.80, 0.16, 0.72]);
+            }
+          }
+          if (state.workspaceMode === "assembly") {
+            // 3D 装配工作台转盘与可吸附接口锚点 (顶板/前缘/底板/后甲板)
+            drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(0, 0.003, 0, 0, Math.max(cl, cw) * 2.15, 0.003, Math.max(cl, cw) * 2.15)), [0.09, 0.45, 0.42, 0.35]);
+            const snapAnchors = [
+              [0, topY + 0.015, 0, [0.16, 0.92, 0.78, 0.9]],
+              [cl * 0.50, deckY + 0.02, 0, [0.98, 0.72, 0.18, 0.9]],
+              [0, deckY - 0.005, 0, [0.30, 0.72, 0.96, 0.9]],
+              [-cl * 0.45, topY + 0.015, 0, [0.75, 0.52, 0.96, 0.9]],
+            ];
+            for (const [ax, ay, az, acol] of snapAnchors) {
+              drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(ax, ay, az, 0, 0.022, 0.016, 0.022)), acol);
+            }
           }
 
           drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.20, deckY+0.014, 0, 0, 0.055, 0.026, cw*0.72)), [0.46, 0.52, 0.56, 1]);
@@ -1813,14 +1899,18 @@ function loop(board) {
           } else if (rearMod === "dual_scoop") {
             drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.54, mountY+0.024, 0, 0, 0.010, 0.042, sw*0.82)), [0.92, 0.66, 0.18, 1]);
           }
-          // Rust 拉伸生成的自定义 3D CAD 零件 (支持自选颜色、偏移位置与安装偏航角)
+          // Rust 拉伸生成的自定义 3D CAD 零件 (支持自选颜色、偏移位置、安装偏航角与选中高亮)
           for (const cp of state.customParts) {
             const cm = getCustomMesh(cp);
             if (cm) {
-              const pCol = hexToRgb01(cp.params?.color, [0.18, 0.65, 0.52, 1]);
+              const isSel = state.selectedItem?.kind === "part" && state.selectedItem.id === cp.id;
+              const pCol = isSel ? [0.20, 0.96, 0.82, 1] : hexToRgb01(cp.params?.color, [0.18, 0.65, 0.52, 1]);
               const lp = cp.local_pos || [0, topY+0.009, 0];
               const pYaw = ((cp.params?.yaw_deg || cp.rotation_deg?.[1] || 0) * Math.PI) / 180;
               drawMesh(cm, M4.mul(baseM, M4.trs(lp[2] || 0, Math.max(0.01, lp[1] || topY+0.009), lp[0] || 0, pYaw, 1, 1, 1)), pCol);
+              if (isSel) {
+                drawMesh(boxMesh, M4.mul(baseM, M4.trs(lp[2] || 0, Math.max(0.01, lp[1] || topY+0.009), lp[0] || 0, pYaw, 0.09, 0.025, 0.09)), [0.98, 0.80, 0.18, 0.45]);
+              }
             }
           }
         }
@@ -1916,25 +2006,97 @@ function loop(board) {
     const fieldGL = createRenderer($("fieldCanvas"));
     const camGL = createRenderer($("camCanvas"));
 
-    function getVisiblePieces() {
+    function getVisiblePieces(includeBlack = false) {
       const sensorSuite = $("mSensorSuite")?.value || "laser3";
+      const vModel = state.vision?.model || "yolo11s_pro";
+      const confTh = state.vision?.conf ?? 0.45;
       const baseFov = (Number($("mCamFov").value) || 110) * Math.PI / 180;
       const camFov = sensorSuite === "lidar360" ? Math.PI * 2 : (sensorSuite === "stereo_cam" ? Math.max(baseFov, 135 * Math.PI / 180) : baseFov);
-      const maxRange = sensorSuite === "lidar360" ? 2.60 : (sensorSuite === "stereo_cam" ? 2.20 : 1.85);
+      const modelRange = vModel === "classic_hsv" ? 1.40 : (vModel === "stereo_depth" ? 2.35 : (vModel === "yolo11n_fast" ? 2.05 : 2.15));
+      const maxRange = sensorSuite === "lidar360" ? 2.60 : (sensorSuite === "stereo_cam" ? Math.max(2.20, modelRange) : modelRange);
       const out = [];
       for (const p of state.pieces) {
-        if (p.scored || p.held || !p.isRed) continue;
+        if (p.scored || p.held || (!includeBlack && !p.isRed)) continue;
         const dx = p.x - state.robot.x, dz = p.z - state.robot.z;
         const dist = Math.hypot(dx, dz);
         if (dist > maxRange) continue;
         let ang = Math.atan2(dz, dx) - state.robot.yaw;
         while (ang > Math.PI) ang -= Math.PI * 2;
         while (ang < -Math.PI) ang += Math.PI * 2;
-        if (Math.abs(ang) <= camFov * 0.5) out.push({ ...p, dist, ang });
+        if (Math.abs(ang) > camFov * 0.5) continue;
+        const baseAcc = vModel === "yolo11s_pro" ? 0.97 : (vModel === "stereo_depth" ? 0.95 : (vModel === "yolo11n_fast" ? 0.90 : 0.82));
+        const conf = Math.max(0.15, Math.min(0.99, baseAcc - dist * 0.14 - Math.abs(ang) * 0.08));
+        if (conf < confTh) continue;
+        out.push({ ...p, dist, ang, conf, model: vModel });
       }
-      out.sort((a, b) => a.dist - b.dist);
-      if (out.length) state.memory = out.slice(0, 6);
+      if (vModel === "yolo11s_pro") {
+        // 棋字识别模式：综合棋子分值与距离排序，优先抢抓红帅(5/10分)等高价值红子
+        out.sort((a, b) => (a.dist - (a.value || 1) * 0.08) - (b.dist - (b.value || 1) * 0.08));
+      } else {
+        out.sort((a, b) => a.dist - b.dist);
+      }
+      if (!includeBlack && out.length) state.memory = out.slice(0, 6);
       return out;
+    }
+
+    function drawVisionOverlay(vpCam) {
+      const ov = $("camOverlay");
+      if (!ov) return;
+      const ctx = ov.getContext("2d");
+      ctx.clearRect(0, 0, ov.width, ov.height);
+      const mode = state.vision?.hudMode || "boxes";
+      if (mode === "off") return;
+
+      // 中心准星与当前视觉模型角标
+      const cx0 = ov.width * 0.5, cy0 = ov.height * 0.5;
+      ctx.strokeStyle = "rgba(126, 227, 203, 0.45)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx0 - 10, cy0); ctx.lineTo(cx0 + 10, cy0);
+      ctx.moveTo(cx0, cy0 - 10); ctx.lineTo(cx0, cy0 + 10);
+      ctx.stroke();
+
+      const mLabel = {
+        yolo11s_pro: "YOLO11s 棋字",
+        yolo11n_fast: "YOLO11n 高速",
+        classic_hsv: "HSV 轮廓",
+        stereo_depth: "双目深度",
+        yolo_http_bridge: state.vision.bridgeOnline ? "真实YOLO桥接(在线)" : "真实YOLO桥接(离线回退)",
+      }[state.vision.model] || "YOLO11s";
+      ctx.fillStyle = "rgba(10,20,22,0.72)";
+      ctx.fillRect(8, 8, 178, 20);
+      ctx.fillStyle = "#7ee3cb";
+      ctx.font = "bold 11px ui-monospace, Consolas, monospace";
+      ctx.fillText(`👁️ ${mLabel} · th=${(state.vision.conf || 0.45).toFixed(2)}`, 14, 22);
+      if (mode === "crosshair") return;
+
+      // 投影 3D 可见棋子到 2D 车载相机画面并绘制识别框
+      const dets = getVisiblePieces(true);
+      for (const p of dets) {
+        const wx = p.x, wy = PIECE_H * 0.6, wz = p.z;
+        const clipX = vpCam[0]*wx + vpCam[4]*wy + vpCam[8]*wz + vpCam[12];
+        const clipY = vpCam[1]*wx + vpCam[5]*wy + vpCam[9]*wz + vpCam[13];
+        const clipW = vpCam[3]*wx + vpCam[7]*wy + vpCam[11]*wz + vpCam[15];
+        if (clipW <= 0.05) continue;
+        const ndcX = clipX / clipW, ndcY = clipY / clipW;
+        if (Math.abs(ndcX) > 1.02 || Math.abs(ndcY) > 1.02) continue;
+        const sx = (ndcX * 0.5 + 0.5) * ov.width;
+        const sy = (1 - (ndcY * 0.5 + 0.5)) * ov.height;
+        const bw = Math.max(20, Math.min(110, 28 / Math.max(0.18, p.dist)));
+        const bh = Math.max(16, bw * 0.65);
+        ctx.strokeStyle = p.isRed ? "#22e3ad" : "#ff6b7b";
+        ctx.lineWidth = 1.6;
+        ctx.strokeRect(sx - bw * 0.5, sy - bh * 0.5, bw, bh);
+        const txt = state.vision.model === "classic_hsv"
+          ? `${p.isRed ? "红块" : "黑块"} ${(p.conf).toFixed(2)}`
+          : `${p.isRed ? "红" : "黑"}${p.label} ${p.conf.toFixed(2)} (${p.dist.toFixed(2)}m)`;
+        ctx.font = "bold 10px ui-monospace, Consolas, monospace";
+        const tw = ctx.measureText(txt).width + 6;
+        ctx.fillStyle = p.isRed ? "rgba(15,159,132,0.85)" : "rgba(194,65,79,0.85)";
+        ctx.fillRect(sx - bw * 0.5, Math.max(2, sy - bh * 0.5 - 14), tw, 13);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(txt, sx - bw * 0.5 + 3, Math.max(12, sy - bh * 0.5 - 4));
+      }
     }
 
     const _utf8Enc = new TextEncoder();
@@ -2345,16 +2507,20 @@ function loop(board) {
           vp = M4.mul(M4.persp(54 * Math.PI / 180, fc.width / fc.height, 0.04, 20), M4.lookAt(state.chaseCam.x, 0.42, state.chaseCam.z, tx, 0.05, tz, 0, 1, 0));
         } else {
           const o = state.orbit;
+          if (state.workspaceMode === "assembly") {
+            o.tx += (r.x - o.tx) * camLerp;
+            o.tz += (r.z - o.tz) * camLerp;
+          }
           const ex = o.tx + o.dist * Math.cos(o.pitch) * Math.sin(o.yaw);
           const ey = o.dist * Math.sin(o.pitch);
           const ez = o.tz + o.dist * Math.cos(o.pitch) * Math.cos(o.yaw);
           eyePos = [ex, ey, ez];
-          vp = M4.mul(M4.persp(45 * Math.PI / 180, fc.width / fc.height, 0.05, 25), M4.lookAt(ex, ey, ez, o.tx, 0.02, o.tz, 0, 1, 0));
+          vp = M4.mul(M4.persp(45 * Math.PI / 180, fc.width / fc.height, 0.05, 25), M4.lookAt(ex, ey, ez, o.tx, state.workspaceMode === "assembly" ? 0.06 : 0.02, o.tz, 0, 1, 0));
         }
         fieldGL.renderScene(vp, eyePos, showOwn);
       }
 
-      // 第一人称真 3D 车载相机视口
+      // 第一人称真 3D 车载相机视口 + 视觉模型实时叠加框
       if (camGL) {
         const cc = $("camCanvas");
         const vpCam = M4.mul(
@@ -2362,6 +2528,7 @@ function loop(board) {
           M4.lookAt(fpEyeX, camH, fpEyeZ, fpEyeX + Math.cos(r.yaw) * fwd, camH + down, fpEyeZ + Math.sin(r.yaw) * fwd, 0, 1, 0)
         );
         camGL.renderScene(vpCam, [fpEyeX, camH, fpEyeZ], false);
+        drawVisionOverlay(vpCam);
       }
 
       const redScore = state.pieces.filter((p) => p.scored && p.isRed).reduce((a, p) => a + p.value, 0);
@@ -2925,6 +3092,7 @@ function loop(board) {
 
     $("runBtn").addEventListener("click", () => {
       if (!state.running && !canStartOfficialMatch()) return;
+      if (!state.running && state.workspaceMode === "assembly") setWorkspaceMode("arena");
       if (state.referee.finished) {
         state.referee.finished = false;
         state.referee.penaltySec = 0;
@@ -2932,7 +3100,7 @@ function loop(board) {
         initPieces();
       }
       state.running = !state.running;
-      $("runBtn").textContent = state.running ? "⏸ 暂停" : "▶ 运行";
+      $("runBtn").textContent = state.running ? "⏸ 暂停" : "▶ 自动运行";
     });
     $("stepBtn").addEventListener("click", () => stepPhysics(0.025));
     $("resetBtn").addEventListener("click", () => {
@@ -2940,7 +3108,7 @@ function loop(board) {
       state.referee.finished = false;
       state.referee.penaltySec = 0;
       state.referee.resetCount = 0;
-      $("runBtn").textContent = "▶ 运行";
+      $("runBtn").textContent = "▶ 自动运行";
       initPieces();
     });
     $("camModeBtn").addEventListener("click", () => {
@@ -3107,72 +3275,209 @@ function loop(board) {
     $("expChassisStlBtn").addEventListener("click", async () => { await syncModulesToRust(); window.open("/api/cad/export.stl?node=chassis_main", "_blank"); });
     $("expScoopStlBtn").addEventListener("click", async () => { await syncModulesToRust(); window.open("/api/cad/export.stl?node=device_scoop", "_blank"); });
 
-    $("optRunBtn").addEventListener("click", async () => {
-      $("optRunBtn").disabled = true;
-      $("optStatus").textContent = "Rust 多核并行评估中...";
-      await syncModulesToRust();
-      const res = await fetch("/api/sim/optimize", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preset: $("mPreset").value, seeds: [42, 101, 202, 303] }),
-      });
-      const data = await res.json();
-      $("optRunBtn").disabled = false;
-      const cands = data.candidates || [];
-      $("optStatus").textContent = `完成 ${cands.length} 构型 × ${data.seeds_count} 种子并行仿真，用时 ${data.elapsed_ms} ms`;
-      window._lastRustCands = cands;
-      $("optList").innerHTML = cands.map((c, idx) => `
-        <div class="list-item">
-          <div>
-            <strong>#${idx + 1} ${c.label}</strong>
-            <small>均分 ${c.avg_score.toFixed(1)}/45 · 耗时 ${c.avg_finish_s.toFixed(1)}s · 打滑 ${c.avg_slip_events.toFixed(1)} · ${c.total_mass_kg.toFixed(2)}kg</small>
-          </div>
-          <button class="btn primary" onclick="applyOpt(${idx})">✨ 应用</button>
-        </div>
-      `).join("");
+    // ==================== 3D 装配空间与视觉模型控制 ====================
+    function updateAsmSelectionUI() {
+      const b = $("asmSelBadge");
+      if (!b) return;
+      if (!state.selectedItem) {
+        b.textContent = "未选中组件 (点击车上自定义零件或车轮直接拖动)";
+        return;
+      }
+      if (state.selectedItem.kind === "part") {
+        const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+        if (!cp) { state.selectedItem = null; b.textContent = "未选中组件"; return; }
+        const lp = cp.local_pos || [0, 0.08, 0];
+        b.textContent = `已选 [${cp.name}] X=${Math.round((lp[2]||0)*1000)}mm Y=${Math.round((lp[1]||0)*1000)}mm Z=${Math.round((lp[0]||0)*1000)}mm`;
+      } else {
+        const w = (state.customWheels || []).find((x) => x.id === state.selectedItem.id);
+        if (!w) { state.selectedItem = null; b.textContent = "未选中组件"; return; }
+        b.textContent = `已选车轮 [${w.id}] X=${Math.round(w.x_m*1000)}mm Z=${Math.round(w.z_m*1000)}mm`;
+      }
+    }
+
+    function setWorkspaceMode(mode) {
+      state.workspaceMode = mode;
+      const isAsm = mode === "assembly";
+      if (isAsm) {
+        state.running = false;
+        if ($("runBtn")) $("runBtn").textContent = "▶ 自动运行";
+        state.camFollowMode = "orbit";
+        if ($("camModeBtn")) $("camModeBtn").textContent = "🎥 视角: 自由环绕3D";
+        state.orbit.tx = state.robot.x;
+        state.orbit.tz = state.robot.z;
+        state.orbit.dist = 0.68;
+        state.orbit.pitch = 0.56;
+      } else {
+        state.orbit.dist = 1.75;
+        state.orbit.tx = 1.05;
+        state.orbit.tz = 1.0;
+      }
+      $("asmToolbar")?.classList.toggle("active", isAsm);
+      if ($("workspaceModeBtn")) $("workspaceModeBtn").textContent = isAsm ? "🏁 返回 3D 赛场运行" : "🔧 3D 装配空间";
+      if ($("fieldTitle")) $("fieldTitle").textContent = isAsm
+        ? "🔧 可动 3D 装配工作台 (点击选择/拖动车上组件与轮胎 · Shift+拖调高度 · 空处拖转视角)"
+        : "🏁 可动 3D 赛场与自动运行空间 (拖拽旋转视角 · 滚轮缩放 · WASD驾驶)";
+      updateAsmSelectionUI();
+    }
+
+    $("workspaceModeBtn")?.addEventListener("click", () => {
+      setWorkspaceMode(state.workspaceMode === "assembly" ? "arena" : "assembly");
     });
 
-    window.applyOpt = async (idx) => {
-      const c = window._lastRustCands?.[idx];
-      if (!c) return;
-      const byId = Object.fromEntries((c.graph?.nodes || []).map((n) => [n.id, n.params]));
-      if (byId.chassis_main?.frame_style && $("mChassisStyle")) $("mChassisStyle").value = byId.chassis_main.frame_style;
-      if (byId.chassis_main?.rear_mod && $("mRearMod")) $("mRearMod").value = byId.chassis_main.rear_mod;
-      if (byId.sensor_laser?.sensor_suite && $("mSensorSuite")) $("mSensorSuite").value = byId.sensor_laser.sensor_suite;
-      if (byId.device_scoop?.device_width) $("mScoopW").value = Math.round(byId.device_scoop.device_width * 1000);
-      if (byId.device_scoop?.device_kind) $("mDeviceKind").value = byId.device_scoop.device_kind;
-      if (byId.wing_pair) {
-        $("mLwD").value = Math.round((byId.wing_pair.left_wing_depth || 0.02) * 1000);
-        $("mLwS").value = byId.wing_pair.left_wing_splay || 10;
-        $("mRwD").value = Math.round((byId.wing_pair.right_wing_depth || 0.02) * 1000);
-        $("mRwS").value = byId.wing_pair.right_wing_splay || 10;
-      }
-      if (byId.motor_drive?.rpm) $("mRpm").value = byId.motor_drive.rpm;
-      if (byId.wheel_mecanum) {
-        const wm = byId.wheel_mecanum;
-        if (wm.drive_type) $("mDrive").value = wm.drive_type;
-        if (wm.tire_type && $("mTireType")) $("mTireType").value = wm.tire_type;
-        if (wm.locomotion_mode && $("mLocoMode")) $("mLocoMode").value = wm.locomotion_mode;
-        if (wm.wheel_count != null && $("mWheelCount")) $("mWheelCount").value = wm.wheel_count;
-        const layout = (wm.wheel_count === 3 && wm.tire_type === "omni") ? "radial_omni" : (wm.drive_type === "tracked" ? "tracked" : "symmetric_axles");
-        if ($("mWheelLayout")) $("mWheelLayout").value = layout;
-        state.customWheels = Array.isArray(wm.custom_wheels)
-          ? wm.custom_wheels
-          : generateWheelLayout(layout, wm.wheel_count || 4, { tireType: wm.tire_type || "mecanum", locoMode: wm.locomotion_mode || "holonomic_strafe" });
-        renderWheelList();
-      }
-      await syncModulesToRust();
-      log(`已应用最优构型: ${c.label}`);
-    };
-
-    $("headlessRunBtn").addEventListener("click", async () => {
-      await syncModulesToRust();
-      const res = await fetch("/api/sim/run", {
+    async function spawnAssemblyBlock(kind) {
+      const presets = {
+        chamfered_rect: { name: "碳纤装甲板",   w: 0.16, l: 0.10, t: 0.005, port: "top_deck",       off: [0, 0.014, 0],   color: "#2d9279" },
+        u_scoop:        { name: "前推斗组件",   w: 0.20, l: 0.08, t: 0.006, port: "front_bulkhead", off: [0, 0.010, 0.02],color: "#e09c2b" },
+        l_bracket:      { name: "视觉安装支架", w: 0.09, l: 0.06, t: 0.005, port: "top_deck",       off: [0, 0.025, 0.03],color: "#4d98e0" },
+        gear_wheel:     { name: "传动齿轮盘",   w: 0.08, l: 0.08, t: 0.006, port: "axle_station",   off: [0.06, 0.015, 0],color: "#d67b3a" },
+        u_channel:      { name: "电池保护槽",   w: 0.11, l: 0.08, t: 0.005, port: "top_deck",       off: [0, 0.012,-0.04],color: "#6b78d6" },
+      };
+      const cfg = presets[kind] || presets.chamfered_rect;
+      const pid = `cad_${Date.now()}`;
+      const res = await fetch("/api/cad/extrude", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preset: $("mPreset").value, seed: 42, duration_s: 120 }),
+        body: JSON.stringify({
+          part_id: pid, name: cfg.name, kind, parent_id: "chassis_main", port_id: cfg.port,
+          width: cfg.w, length: cfg.l, thickness: cfg.t, density_kg_m3: 1450,
+          offset: cfg.off, yaw_deg: 0, color: cfg.color,
+        }),
       });
-      const data = await res.json();
-      const s = data.summary;
-      if (s) $("optStatus").textContent = `单场评估: 得分 ${s.score}/45 · 入区 ${s.collected}枚 · 用时 ${s.finish_time_s.toFixed(1)}s · 峰值推力 ${s.peak_force_n.toFixed(1)}N · 能耗 ${s.energy_j.toFixed(0)}J`;
+      if (res.ok) {
+        const d = await res.json();
+        if (d.resolved) updateResolvedUI(d.resolved);
+        await refreshAssembly();
+        const item = state.customParts.find((p) => p.id === pid);
+        if (item && d.mesh) item.mesh = d.mesh;
+        state.selectedItem = { kind: "part", id: pid };
+        if (state.workspaceMode !== "assembly") setWorkspaceMode("assembly");
+        updateAsmSelectionUI();
+        log(`🧱 已创造组件 [${cfg.name}] 到 3D 装配空间，可直接拖动安装`);
+      }
+    }
+
+    document.querySelectorAll("[data-spawn]").forEach((btn) => {
+      btn.addEventListener("click", () => spawnAssemblyBlock(btn.dataset.spawn));
+    });
+    $("asmAddWheelBtn")?.addEventListener("click", async () => {
+      $("addWheelBtn")?.click();
+      if (state.customWheels?.length) {
+        const lw = state.customWheels[state.customWheels.length - 1];
+        state.selectedItem = { kind: "wheel", id: lw.id };
+        updateAsmSelectionUI();
+      }
+    });
+    async function persistSelectedItem() {
+      if (!state.selectedItem) return;
+      if (state.selectedItem.kind === "part") {
+        const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+        if (!cp) return;
+        const res = await fetch("/api/cad/move", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            part_id: cp.id,
+            local_pos: cp.local_pos || [0, 0.08, 0],
+            yaw_deg: cp.params?.yaw_deg ?? cp.rotation_deg?.[1] ?? 0,
+          }),
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.resolved) updateResolvedUI(d.resolved);
+        }
+      } else {
+        renderWheelList();
+        await syncModulesToRust();
+      }
+    }
+    $("asmUpBtn")?.addEventListener("click", () => {
+      if (state.selectedItem?.kind !== "part") return;
+      const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+      if (!cp) return;
+      cp.local_pos = cp.local_pos || [0, 0.08, 0];
+      cp.local_pos[1] = Number(((cp.local_pos[1] || 0.08) + 0.008).toFixed(4));
+      updateAsmSelectionUI();
+      persistSelectedItem();
+    });
+    $("asmDownBtn")?.addEventListener("click", () => {
+      if (state.selectedItem?.kind !== "part") return;
+      const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+      if (!cp) return;
+      cp.local_pos = cp.local_pos || [0, 0.08, 0];
+      cp.local_pos[1] = Math.max(0.01, Number(((cp.local_pos[1] || 0.08) - 0.008).toFixed(4)));
+      updateAsmSelectionUI();
+      persistSelectedItem();
+    });
+    $("asmRotBtn")?.addEventListener("click", () => {
+      if (!state.selectedItem) return;
+      if (state.selectedItem.kind === "part") {
+        const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+        if (!cp) return;
+        const cur = cp.params?.yaw_deg ?? cp.rotation_deg?.[1] ?? 0;
+        const nxt = (cur + 15) % 360;
+        cp.params = cp.params || {};
+        cp.params.yaw_deg = nxt;
+        if (cp.rotation_deg) cp.rotation_deg[1] = nxt;
+      } else {
+        const w = (state.customWheels || []).find((x) => x.id === state.selectedItem.id);
+        if (!w) return;
+        w.yaw_deg = ((w.yaw_deg || 0) + 15) % 360;
+      }
+      updateAsmSelectionUI();
+      persistSelectedItem();
+    });
+    $("asmDelBtn")?.addEventListener("click", async () => {
+      if (!state.selectedItem) return;
+      if (state.selectedItem.kind === "part") {
+        const id = state.selectedItem.id;
+        state.selectedItem = null;
+        await window.deleteCadPart(id);
+      } else {
+        const idx = (state.customWheels || []).findIndex((x) => x.id === state.selectedItem.id);
+        state.selectedItem = null;
+        if (idx >= 0) await window.removeWheel(idx);
+      }
+      updateAsmSelectionUI();
+    });
+
+    function syncVisionUI() {
+      const m = $("visionModel")?.value || "yolo11s_pro";
+      const c = Math.max(0.15, Math.min(0.95, Number($("visionConf")?.value) || 0.45));
+      const h = $("visionHudMode")?.value || "boxes";
+      state.vision.model = m;
+      state.vision.conf = c;
+      state.vision.hudMode = h;
+      const names = {
+        yolo11s_pro: "YOLO11s 棋字",
+        yolo11n_fast: "YOLO11n 高速",
+        classic_hsv: "HSV 轮廓",
+        stereo_depth: "双目深度",
+        yolo_http_bridge: "真实YOLO桥接",
+      };
+      if ($("visionTopPill")) $("visionTopPill").textContent = `👁️ 视觉: ${names[m] || m}`;
+      if ($("visionStatus")) $("visionStatus").textContent = `当前模型: ${names[m] || m} · 阈值 ${c.toFixed(2)} · 实时检测框已叠加至车载第一人称画面`;
+    }
+    ["visionModel", "visionConf", "visionHudMode"].forEach((id) => $(id)?.addEventListener("change", syncVisionUI));
+    $("probeYoloBtn")?.addEventListener("click", async () => {
+      try {
+        const r = await fetch("http://127.0.0.1:8765/health");
+        if (r.ok) {
+          state.vision.bridgeOnline = true;
+          if ($("yoloBridgePill")) { $("yoloBridgePill").textContent = "在线"; $("yoloBridgePill").className = "pill ok"; }
+          log("✅ 本地真实 YOLO 桥接服务已连接 (http://127.0.0.1:8765)");
+          return;
+        }
+      } catch (_) {}
+      state.vision.bridgeOnline = false;
+      if ($("yoloBridgePill")) { $("yoloBridgePill").textContent = "未连接"; $("yoloBridgePill").className = "pill"; }
+      log("⚠️ 未检测到本地 YOLO 桥接 (请先运行 start_yolo_bridge.ps1)，当前使用内置仿真视觉");
+    });
+    $("visionAutoRunBtn")?.addEventListener("click", () => {
+      syncVisionUI();
+      compileStrategy();
+      if (state.workspaceMode === "assembly") setWorkspaceMode("arena");
+      if (!canStartOfficialMatch()) return;
+      state.running = true;
+      if ($("runBtn")) $("runBtn").textContent = "⏸ 暂停";
+      log(`🤖 已应用视觉模型 [${$("visionModel")?.value}] 与控制固件，启动自动运行`);
     });
 
     $("strategyPreset").addEventListener("change", (e) => {
@@ -3231,21 +3536,154 @@ function loop(board) {
       $("mcpOut").textContent = `MCP 返回: ${d.graph?.nodes?.length || 0} 个独立硬件/CAD节点 · 整车 ${(d.resolved?.total_mass || 0).toFixed(2)}kg`;
     });
 
-    // 3D 视口自由拖拽旋转与滚轮缩放
+    // 3D 视口：在装配空间下支持射线点选/手拖组件与轮胎，空处拖拽旋转视角，滚轮缩放
     const fc = $("fieldCanvas");
     let dragPt = null;
-    fc.addEventListener("pointerdown", (e) => { dragPt = { x: e.clientX, y: e.clientY }; });
+    let draggingItem = false;
+
+    function getOrbitRay(clientX, clientY) {
+      const rect = fc.getBoundingClientRect();
+      const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+      const ny = 1 - ((clientY - rect.top) / rect.height) * 2;
+      const o = state.orbit;
+      const ex = o.tx + o.dist * Math.cos(o.pitch) * Math.sin(o.yaw);
+      const ey = o.dist * Math.sin(o.pitch);
+      const ez = o.tz + o.dist * Math.cos(o.pitch) * Math.cos(o.yaw);
+      const ty = state.workspaceMode === "assembly" ? 0.06 : 0.02;
+      let fx = o.tx - ex, fy = ty - ey, fz = o.tz - ez;
+      const fl = Math.hypot(fx, fy, fz) || 1; fx /= fl; fy /= fl; fz /= fl;
+      // right = normalize(cross(fwd, [0,1,0]))
+      let rx = -fz, ry = 0, rz = fx;
+      const rl = Math.hypot(rx, rz) || 1; rx /= rl; rz /= rl;
+      // up = cross(right, fwd)
+      const ux = ry * fz - rz * fy;
+      const uy = rz * fx - rx * fz;
+      const uz = rx * fy - ry * fx;
+      const tanH = Math.tan((45 * Math.PI / 180) * 0.5);
+      const asp = fc.width / fc.height;
+      let dx = fx + rx * (nx * asp * tanH) + ux * (ny * tanH);
+      let dy = fy + ry * (nx * asp * tanH) + uy * (ny * tanH);
+      let dz = fz + rz * (nx * asp * tanH) + uz * (ny * tanH);
+      const dl = Math.hypot(dx, dy, dz) || 1;
+      return { eye: [ex, ey, ez], dir: [dx / dl, dy / dl, dz / dl] };
+    }
+
+    function rayDistToPoint(ray, px, py, pz) {
+      const vx = px - ray.eye[0], vy = py - ray.eye[1], vz = pz - ray.eye[2];
+      const t = vx * ray.dir[0] + vy * ray.dir[1] + vz * ray.dir[2];
+      if (t <= 0.05) return 999;
+      const cx = ray.eye[0] + ray.dir[0] * t - px;
+      const cy = ray.eye[1] + ray.dir[1] * t - py;
+      const cz = ray.eye[2] + ray.dir[2] * t - pz;
+      return Math.hypot(cx, cy, cz);
+    }
+
+    function localToWorldOnCar(fwdX, y, latZ) {
+      const r = state.robot;
+      const c = Math.cos(r.yaw), s = Math.sin(r.yaw);
+      return [r.x + c * fwdX - s * latZ, y, r.z + s * fwdX + c * latZ];
+    }
+
+    function worldToLocalOnCar(wx, wz) {
+      const r = state.robot;
+      const dx = wx - r.x, dz = wz - r.z;
+      const c = Math.cos(r.yaw), s = Math.sin(r.yaw);
+      return [c * dx + s * dz, -s * dx + c * dz];
+    }
+
+    fc.addEventListener("pointerdown", (e) => {
+      dragPt = { x: e.clientX, y: e.clientY };
+      draggingItem = false;
+      if (state.workspaceMode === "assembly" && state.camFollowMode === "orbit") {
+        const ray = getOrbitRay(e.clientX, e.clientY);
+        let best = null, bestD = 0.065;
+        for (const cp of state.customParts) {
+          const lp = cp.local_pos || [0, 0.08, 0];
+          const [wx, wy, wz] = localToWorldOnCar(lp[2] || 0, Math.max(0.01, lp[1] || 0.08), lp[0] || 0);
+          const d = rayDistToPoint(ray, wx, wy, wz);
+          if (d < bestD) { bestD = d; best = { kind: "part", id: cp.id }; }
+        }
+        for (const w of (state.customWheels || [])) {
+          const [wx, wy, wz] = localToWorldOnCar(w.x_m, w.radius_m || 0.03, w.z_m);
+          const d = rayDistToPoint(ray, wx, wy, wz);
+          if (d < bestD) { bestD = d; best = { kind: "wheel", id: w.id }; }
+        }
+        if (best) {
+          state.selectedItem = best;
+          draggingItem = true;
+          updateAsmSelectionUI();
+        } else {
+          state.selectedItem = null;
+          updateAsmSelectionUI();
+        }
+      }
+    });
+
     window.addEventListener("pointermove", (e) => {
       if (!dragPt) return;
       const dx = e.clientX - dragPt.x, dy = e.clientY - dragPt.y;
       dragPt = { x: e.clientX, y: e.clientY };
+      if (draggingItem && state.selectedItem) {
+        if (e.shiftKey && state.selectedItem.kind === "part") {
+          const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+          if (cp) {
+            cp.local_pos = cp.local_pos || [0, 0.08, 0];
+            cp.local_pos[1] = Math.max(0.01, Math.min(0.45, Number(((cp.local_pos[1] || 0.08) - dy * 0.0015).toFixed(4))));
+            updateAsmSelectionUI();
+          }
+          return;
+        }
+        const ray = getOrbitRay(e.clientX, e.clientY);
+        if (Math.abs(ray.dir[1]) < 1e-4) return;
+        let planeY = 0.08;
+        if (state.selectedItem.kind === "part") {
+          const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+          planeY = cp?.local_pos?.[1] || 0.08;
+        } else {
+          const w = (state.customWheels || []).find((x) => x.id === state.selectedItem.id);
+          planeY = w?.radius_m || 0.03;
+        }
+        const t = (planeY - ray.eye[1]) / ray.dir[1];
+        if (t <= 0.05) return;
+        const wx = ray.eye[0] + ray.dir[0] * t;
+        const wz = ray.eye[2] + ray.dir[2] * t;
+        let [fwdX, latZ] = worldToLocalOnCar(wx, wz);
+        fwdX = Math.max(-0.40, Math.min(0.40, fwdX));
+        latZ = Math.max(-0.40, Math.min(0.40, latZ));
+        // 吸附到对称中心线 / 前缘接口
+        if (Math.abs(latZ) < 0.015) latZ = 0;
+        if (Math.abs(fwdX) < 0.015) fwdX = 0;
+        if (state.selectedItem.kind === "part") {
+          const cp = state.customParts.find((p) => p.id === state.selectedItem.id);
+          if (cp) {
+            cp.local_pos = [Number(latZ.toFixed(4)), Number(planeY.toFixed(4)), Number(fwdX.toFixed(4))];
+          }
+        } else {
+          const w = (state.customWheels || []).find((x) => x.id === state.selectedItem.id);
+          if (w) {
+            w.x_m = Number(fwdX.toFixed(3));
+            w.z_m = Number(latZ.toFixed(3));
+            if ($("mWheelLayout")) $("mWheelLayout").value = "manual_free";
+          }
+        }
+        updateAsmSelectionUI();
+        return;
+      }
       state.orbit.yaw -= dx * 0.008;
       state.orbit.pitch = Math.max(0.15, Math.min(1.48, state.orbit.pitch + dy * 0.006));
     });
-    window.addEventListener("pointerup", () => { dragPt = null; });
+
+    window.addEventListener("pointerup", () => {
+      if (draggingItem && state.selectedItem) {
+        draggingItem = false;
+        persistSelectedItem();
+      }
+      dragPt = null;
+    });
     fc.addEventListener("wheel", (e) => {
       e.preventDefault();
-      state.orbit.dist = Math.max(0.8, Math.min(6.0, state.orbit.dist + e.deltaY * 0.002));
+      const minD = state.workspaceMode === "assembly" ? 0.32 : 0.80;
+      state.orbit.dist = Math.max(minD, Math.min(6.0, state.orbit.dist + e.deltaY * 0.0018));
     }, { passive: false });
 
     // 第一人称车载相机窗口：上下拖拽直接调俯仰角，滚轮调相机安装高度

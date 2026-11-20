@@ -342,6 +342,25 @@ fn handle_client(mut stream: TcpStream, ctx: Arc<ServerContext>) {
                 send_json(&mut stream, "200 OK", &json!({ "ok": true, "removed": removed, "graph": &*g, "resolved": g.resolve_kinematics() }));
             }
         }
+        ("POST", "/api/cad/move") => {
+            let payload: Value = serde_json::from_str(&body_str).unwrap_or_default();
+            let part_id = payload.get("part_id").and_then(|v| v.as_str()).unwrap_or("");
+            let local_pos: Option<[f64; 3]> = payload.get("local_pos").and_then(|v| serde_json::from_value(v.clone()).ok());
+            let yaw_deg = payload.get("yaw_deg").and_then(|v| v.as_f64());
+            let mut g = ctx.state.lock().unwrap();
+            if let Some(node) = g.nodes.iter_mut().find(|n| n.id == part_id) {
+                if let Some(pos) = local_pos {
+                    node.local_pos = pos;
+                }
+                if let Some(yd) = yaw_deg {
+                    node.rotation_deg[1] = yd;
+                    node.params["yaw_deg"] = json!(yd);
+                }
+                send_json(&mut stream, "200 OK", &json!({ "ok": true, "resolved": g.resolve_kinematics() }));
+            } else {
+                send_json(&mut stream, "404 Not Found", &json!({ "ok": false, "error": "Part not found" }));
+            }
+        }
         ("POST", "/api/assembly/sync") => {
             let payload: Value = serde_json::from_str(&body_str).unwrap_or_default();
             let mut g = ctx.state.lock().unwrap();
