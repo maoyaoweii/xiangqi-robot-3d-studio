@@ -1,0 +1,26 @@
+1 ICON "app.ico"
+
+1 VERSIONINFO
+FILEVERSION 0,3,0,0
+PRODUCTVERSION 0,3,0,0
+FILEOS 0x40004
+FILETYPE 0x1
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Xiangqi Optoelectronics Robotics Lab"
+      VALUE "FileDescription", "Xiangqi Rust 3D Engineering Studio"
+      VALUE "FileVersion", "0.3.0.0"
+      VALUE "InternalName", "XiangqiRustStudio"
+      VALUE "OriginalFilename", "XiangqiRustStudio.exe"
+      VALUE "ProductName", "Xiangqi Rust 3D Engineering Studio"
+      VALUE "ProductVersion", "0.3.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1200
+  END
+END

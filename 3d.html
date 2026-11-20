@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>光赛一 · 3D 上帝视角纯视觉仿真与独立设计工坊</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="3d.css" />
+  </head>
+  <body>
+    <div class="game-shell">
+      <header class="game-topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark"><span></span><span></span><span></span></div>
+          <div>
+            <div class="eyebrow">TRACK 1 / REAL ONBOARD VISION &amp; HIGH-FREEDOM CAD STUDIO</div>
+            <h1>光赛一 · 纯视觉闭环仿真与高自由度模块设计平台</h1>
+            <p>黑体红白字国赛标准象棋 · 真实第一人称 3D 车载摄像头视角 · 独立全屏高自由度 CAD 设计工坊 · 固定上帝3D视角</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <a class="button ghost" href="studio.html" style="text-decoration:none;" title="返回极简真3D工程主台">← 极简3D主台</a>
+          <button class="button studio-launch" id="openStudioButton" title="进入独立全屏高自由度模块设计界面">🛠️ 独立模块设计工坊</button>
+          <button class="button toggle-chip active" id="lockCameraButton" title="锁定/解锁上帝3D视角">🔒 固定上帝3D视角</button>
+          <button class="button ghost" id="resetCameraButton" title="复位上帝3D视角">⌖ 视角复位</button>
+          <div class="speed-group" role="group" aria-label="仿真倍速">
+            <button class="speed-btn active" data-speed="1">1×</button>
+            <button class="speed-btn" data-speed="2">2×</button>
+            <button class="speed-btn" data-speed="5">5×</button>
+            <button class="speed-btn" data-speed="10">10×</button>
+          </div>
+          <button class="button ghost" id="openInspectorButton">二维装配器</button>
+          <button class="button ghost" id="resetGameButton">↺ 重置赛场</button>
+          <button class="button ghost" id="quickOptimizeButton">🚀 仿真寻优计算</button>
+          <button class="button ghost" id="bestSchemeButton">✨ 加载当前最优解</button>
+          <button class="button ghost" id="stepSimButton" title="单步推进 25ms 物理与控制闭环">⏭ +25ms</button>
+          <button class="button accent" id="runGameButton">▶ 开始仿真</button>
+        </div>
+      </header>
+
+      <main class="game-grid">
+        <!-- 左侧：整车合规总览 + 8大独立工坊入口卡片 + 控制模式 -->
+        <aside class="game-panel left-panel">
+          <section class="panel-section hero-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">VEHICLE ASSEMBLY &amp; SPEC</div>
+                <h2>整车独立总装总览</h2>
+              </div>
+              <span class="status-pill mint" id="compliancePill">无限制模式</span>
+            </div>
+            <div class="spec-grid">
+              <div><strong id="specMass">1.47 kg</strong><span>整车总重 (含配重)</span></div>
+              <div><strong id="specEnvelope">277×234×207</strong><span>实际包络尺寸 mm</span></div>
+              <div><strong id="specMaxSpeed">1.00 m/s</strong><span>真实驱动极速</span></div>
+              <div><strong id="specVision">110° / 1.75m</strong><span>独立相机视场</span></div>
+            </div>
+            <label class="designer-checkbox-row compact-toggle unrestricted-toggle-row">
+              <span>🔓 无限制自由组装 (直输任意参数)</span>
+              <input type="checkbox" id="unrestrictedModeBox" checked />
+            </label>
+            <div class="compliance-msg" id="complianceMsg">全车 10 大硬件部件与自定义 CAD 拼图件均可独立拆装、吸附和真实结构连接，当前不设国赛尺寸/重量/功率上限。</div>
+          </section>
+
+          <section class="panel-section parts-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">CLICK TO OPEN INDEPENDENT STUDIO</div>
+                <h3>模块化独立设计中心</h3>
+              </div>
+              <button class="text-button" id="syncFrom2dButton" title="同步二维装配器数据">同步2D配置</button>
+            </div>
+            <p class="panel-note-compact">点击任意模块，将打开<strong>独立全屏 CAD 工坊界面</strong>进行高自由度几何拖拽与参数设计：</p>
+            <div class="module-cards-grid" id="moduleCardsGrid"></div>
+          </section>
+
+          <section class="panel-section driving-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">CONTROL &amp; SCENE</div>
+                <h3>控制模式与布棋</h3>
+              </div>
+              <span class="key-hint" id="controlModeBadge">纯视觉代码</span>
+            </div>
+            <div class="select-row">
+              <label for="matchModeSelect">赛制模式</label>
+              <select id="matchModeSelect">
+                <option value="solo">单车计时调优 (测试极限得分)</option>
+                <option value="versus">甲红 vs 乙白 双车同场对抗</option>
+              </select>
+            </div>
+            <div class="select-row">
+              <label for="startYawSelect">发车朝向</label>
+              <select id="startYawSelect">
+                <option value="center">斜对中央堆放区 (~123°)</option>
+                <option value="wide">宽视场斜上巡扫 (~132°)</option>
+                <option value="east">水平向右贴边冲刺 (90°)</option>
+                <option value="north">正北向敌侧通道 (~155°)</option>
+              </select>
+            </div>
+            <div class="select-row">
+              <label for="controlModeSelect">驾驶方式</label>
+              <select id="controlModeSelect">
+                <option value="code">自定义 JS 代码 (仅限车载感知)</option>
+                <option value="manual">手动驾驶 (WASD / 滑块)</option>
+              </select>
+            </div>
+            <div class="select-row">
+              <label for="layoutModeSelect">布棋方式</label>
+              <select id="layoutModeSelect">
+                <option value="standard">标准中央 600×600 随机堆放</option>
+                <option value="spread">全场分散对抗分布</option>
+              </select>
+            </div>
+            <div class="manual-sliders" id="manualControlsBox">
+              <label class="range-row"><span>前进油门 <output id="throttleValue">0.00</output></span><input id="throttleControl" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+              <label class="range-row"><span>转向 <output id="steerValue">0.00</output></span><input id="steerControl" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+              <label class="range-row"><span>横移 (麦轮/全向) <output id="strafeValue">0.00</output></span><input id="strafeControl" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+            </div>
+            <div class="physics-readout">
+              <span><i class="dot blue"></i>摩擦系数 <b id="frictionValue">0.78</b></span>
+              <span><i class="dot amber"></i>接触推力 <b id="contactValue">0.0 N</b></span>
+            </div>
+          </section>
+        </aside>
+
+        <!-- 中间主区域：固定上帝3D视口 + 代码/寻优/YOLO设置 -->
+        <section class="viewport-panel">
+          <div class="viewport-shell" id="viewportShell">
+            <canvas id="gameCanvas" tabindex="0" aria-label="上帝3D视角赛道仿真场景，可拖动棋子摆放"></canvas>
+            <div class="viewport-glow"></div>
+            <div class="viewport-hud hud-top-left">
+              <span class="hud-tag" id="cameraModeTag">GOD-EYE 3D · LOCKED</span>
+              <span class="hud-tag vision-tag">ONBOARD VISION ONLY</span>
+              <strong>3000 × 2000 mm</strong>
+              <small id="sceneHint">固定上帝3D俯视全局 · 黑底红白字国赛象棋 · 左键拖动棋子</small>
+            </div>
+            <div class="viewport-hud hud-top-right">
+              <span id="simClock">T+00:00.0 / 02:00</span>
+              <span class="hud-divider" id="versusHudDivider" hidden></span>
+              <span class="versus-hud-pill" id="versusHudPill" hidden>甲 0 : 0 乙</span>
+              <span class="hud-divider"></span>
+              <span id="targetHud">阶段：等待开始</span>
+            </div>
+            <div class="viewport-bottom-bar">
+              <div class="legend">
+                <span><i class="legend-dot black-red"></i>甲队(黑体红字)</span>
+                <span><i class="legend-dot black-white"></i>乙队(黑体白字)</span>
+                <span><i class="legend-dot cyan"></i>相机视野锁定</span>
+                <span><i class="legend-dot route"></i>规划路线</span>
+                <span><i class="legend-dot mint"></i>已完整入区</span>
+              </div>
+              <div class="viewport-help" id="viewportHelpText">视角已锁定 · 左键拖动棋子</div>
+            </div>
+          </div>
+
+          <!-- 底部工作台标签页 -->
+          <div class="workbench-shell">
+            <div class="workbench-tabs">
+              <button class="tab-btn active" data-tab="code">💻 自定义控制代码</button>
+              <button class="tab-btn" data-tab="research">📊 物理反馈与研究讨论</button>
+              <button class="tab-btn" data-tab="optimizer">🚀 自动仿真寻优</button>
+              <button class="tab-btn" data-tab="cadmcp">🧩 CAD建模与MCP接口</button>
+              <button class="tab-btn" data-tab="vision">🔌 YOLO 桥接与真实相机</button>
+              <span class="tab-spacer"></span>
+              <span class="tab-status-pill" id="codeCompileStatus">代码已就绪</span>
+            </div>
+
+            <!-- Tab 1: 自定义控制代码工坊 -->
+            <div class="tab-pane active" id="tab-code">
+              <div class="code-toolbar">
+                <div class="code-toolbar-left">
+                  <label for="codeTemplateSelect">代码模板</label>
+                  <select id="codeTemplateSelect">
+                    <option value="optimal_funnel">纯视觉巡航扫描 + 聚拢推子状态机（推荐）</option>
+                    <option value="versus_blitz">双车对抗抢中突击 + 雷达避让策略</option>
+                    <option value="combo_sweep">纯视觉走廊迂回 + 区域清场策略</option>
+                    <option value="mecanum_omni">纯视觉麦轮蟹行对准策略</option>
+                    <option value="minimal_custom">极简自定义模板（无地图作弊）</option>
+                  </select>
+                </div>
+                <div class="code-toolbar-actions">
+                  <button class="button ghost small" id="toggleApiHelpBtn">纯视觉 API 速查</button>
+                  <button class="button ghost small" id="resetCodeBtn">↺ 恢复模板</button>
+                  <button class="button ghost small" id="exportCodeBtn">导出 JS</button>
+                  <button class="button accent small" id="applyCodeBtn">▶ 应用代码并运行</button>
+                </div>
+              </div>
+
+              <div class="api-cheatsheet" id="apiCheatsheet" hidden>
+                <strong><code>decide(ctx)</code> 严格车载感知 API（无全局地图坐标 · 编辑器内按 <code>Ctrl+Enter</code> 即时编译运行）：</strong>
+                <ul>
+                  <li><code>ctx.vision</code>: <code>{ visible, myVisible, enemyVisible, fov, range, mountYaw, unseenCount }</code>（仅包含当前帧相机第一人称视野内未被遮挡的棋子观测）</li>
+                  <li><code>ctx.myPieces</code> / <code>ctx.perceivedPieces</code>: 车载视觉记忆库中已扫描到的己方/全部棋子（带光学观测噪声）；对抗赛可见敌车时附带 <code>ctx.enemyRobot</code>（不可见为 <code>null</code>）</li>
+                  <li><code>ctx.sensors</code>: <code>{ pocket: { inPocket, piece }, laser: { frontDist, leftDist, rightDist, rays }, imu: { x, z, yaw, speed, omega } }</code></li>
+                  <li><code>ctx.scanForPieces()</code>: 车载相机主动巡航扫描控制器（未发现棋子时调用，驱动视锥搜寻赛场盲区）</li>
+                  <li><code>ctx.driveTo(x, z, opts)</code> / <code>ctx.goal</code> / <code>ctx.memory</code> / <code>ctx.params</code>；返回 <code>{ throttle, steer, strafe, targetId?, phase?, waypoints? }</code></li>
+                </ul>
+              </div>
+
+              <textarea id="codeEditor" spellcheck="false" aria-label="小车控制策略 JavaScript 编辑器"></textarea>
+            </div>
+
+            <!-- Tab 2: 物理反馈示波器 · 实验室参数 · 回放讨论与对比 -->
+            <div class="tab-pane" id="tab-research">
+              <div class="research-env-bar">
+                <div class="research-ctrl">
+                  <label for="physPresetSelect">实验物理场预设</label>
+                  <select id="physPresetSelect">
+                    <option value="standard">国赛标准 PVC 面 (μ=0.78, e=0.42, 48g)</option>
+                    <option value="slippery">湿滑亚克力板 (μ=0.32 · 高打滑探索)</option>
+                    <option value="bouncy">高弹性硬质碰撞 (e=0.82 · 散射研究)</option>
+                    <option value="heavy">重棋满载极限测试 (80g · 牵引极限)</option>
+                  </select>
+                </div>
+                <label class="research-slider">
+                  <span>摩擦系数 μ <b id="physFrictionLabel">0.78</b></span>
+                  <input type="range" id="physFrictionRange" min="0.20" max="1.15" step="0.02" value="0.78" />
+                </label>
+                <label class="research-slider">
+                  <span>恢复系数 e <b id="physRestitutionLabel">0.42</b></span>
+                  <input type="range" id="physRestitutionRange" min="0.10" max="0.90" step="0.02" value="0.42" />
+                </label>
+                <label class="research-slider">
+                  <span>单棋质量 <b id="physMassLabel">48g</b></span>
+                  <input type="range" id="physPieceMassRange" min="25" max="100" step="1" value="48" />
+                </label>
+                <label class="designer-checkbox-row compact-toggle research-vec-toggle">
+                  <span>3D受力矢量</span>
+                  <input type="checkbox" id="togglePhysicsVectorsBox" checked />
+                </label>
+              </div>
+
+              <div class="replay-bar">
+                <span class="replay-tag">⏪ 物理时序回放</span>
+                <input type="range" id="replayScrubber" min="0" max="0" step="1" value="0" />
+                <strong id="replayTimeLabel">LIVE · 0.0s</strong>
+                <button class="button ghost small" id="resumeLiveBtn" title="切回当前最新仿真状态">回到最新</button>
+                <button class="button gold small" id="recordExperimentBtn">📌 记录实验快照</button>
+                <button class="button accent small" id="exportResearchMdBtn">📝 导出研究报告(.md)</button>
+              </div>
+
+              <div class="scope-box">
+                <div class="scope-legend">
+                  <span><i class="dot-c cyan"></i>实测线速度 / 期望</span>
+                  <span><i class="dot-c amber"></i>前推接触力(N) / 牵引上限红线</span>
+                  <span><i class="dot-c red"></i>实时得分</span>
+                  <small id="scopeSummaryMeta">等待仿真数据采集...</small>
+                </div>
+                <canvas id="physicsScopeCanvas" width="760" height="132" aria-label="实时物理动力学波形示波器"></canvas>
+              </div>
+
+              <div class="research-split-grid">
+                <div class="research-card">
+                  <div class="research-card-head">
+                    <strong>实验方案对照记录 (<span id="expCountBadge">0</span>)</strong>
+                    <div>
+                      <button class="text-button" id="compareRunsBtn">⚖️ 对比勾选</button>
+                      <button class="text-button" id="clearExpRunsBtn">清空</button>
+                    </div>
+                  </div>
+                  <div class="compare-diff-banner" id="compareDiffBanner" hidden></div>
+                  <div class="exp-table-wrap">
+                    <table class="opt-table exp-table">
+                      <thead>
+                        <tr><th>选</th><th>实验方案 / 物理场</th><th>得分</th><th>耗时</th><th>峰值力/打滑</th><th>能耗</th></tr>
+                      </thead>
+                      <tbody id="experimentRunsBody"><tr><td colspan="6" class="empty-cell">运行后点击「📌 记录实验快照」保存对照实验</td></tr></tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="research-card">
+                  <div class="research-card-head">
+                    <strong>研究探索批注 &amp; 讨论板</strong>
+                    <button class="text-button" id="clearResearchNotesBtn">清空笔记</button>
+                  </div>
+                  <div class="research-notes-feed" id="researchNotesList"><div class="empty-state">可结合示波器与回放时间轴记录发现，例如打滑帧、遮挡盲区、翼展优劣等。</div></div>
+                  <div class="research-note-compose">
+                    <input type="text" id="researchNoteInput" placeholder="输入讨论批注 (自动附带当前时间与物理参数)..." />
+                    <button class="button accent small" id="addResearchNoteBtn">添加批注</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 3: 自动仿真寻优器 -->
+            <div class="tab-pane" id="tab-optimizer">
+              <div class="optimizer-controls">
+                <div class="opt-field">
+                  <label for="optScopeSelect">寻优范围</label>
+                  <select id="optScopeSelect">
+                    <option value="joint">全车零件选配 × 几何形态 × 超参三阶段寻优（推荐）</option>
+                    <option value="full_cad">深度 CAD 几何（翼展/口宽/机高/俯仰）+ 参数联合寻优</option>
+                    <option value="parts_only">对比全部零件选配组合（固定当前代码）</option>
+                    <option value="params_only">仅优化当前代码超参数（固定当前零件）</option>
+                  </select>
+                </div>
+                <div class="opt-field">
+                  <label for="optSeedsSelect">蒙特卡洛局数</label>
+                  <select id="optSeedsSelect">
+                    <option value="2">每方案 2 局随机棋盘（快速）</option>
+                    <option value="3" selected>每方案 3 局随机棋盘（均衡）</option>
+                    <option value="5">每方案 5 局随机棋盘（高精度）</option>
+                  </select>
+                </div>
+                <div class="opt-field">
+                  <label for="optDurationSelect">单局时长</label>
+                  <select id="optDurationSelect">
+                    <option value="90">90 秒</option>
+                    <option value="120" selected>120 秒（国赛标准）</option>
+                  </select>
+                </div>
+                <div class="opt-actions">
+                  <button class="button gold small" id="startOptBtn">🚀 开始寻优计算</button>
+                  <button class="button ghost small" id="stopOptBtn" disabled>⏹ 停止</button>
+                </div>
+              </div>
+
+              <div class="opt-progress-wrap">
+                <div class="opt-progress-bar"><div id="optProgressFill" style="width: 0%"></div></div>
+                <span id="optProgressText">寻优全程在真实车载视觉+遮挡+噪声约束下仿真计算，寻找合规最高分方案。</span>
+              </div>
+
+              <div class="opt-best-banner" id="optBestBanner" hidden>
+                <div>
+                  <span class="opt-badge">🏆 全局最优解</span>
+                  <strong id="optBestSummary">—</strong>
+                  <small id="optBestMetrics">—</small>
+                </div>
+                <button class="button accent small" id="applyBestOptBtn">应用此最优解并 3D 演示</button>
+              </div>
+
+              <div class="opt-table-wrap">
+                <table class="opt-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>零件选配方案</th>
+                      <th>均分/45</th>
+                      <th>满30分耗时</th>
+                      <th>质量/包络</th>
+                      <th>代码超参摘要</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="optResultsBody">
+                    <tr><td colspan="7" class="empty-cell">尚未运行寻优计算</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tab 3: 外部摄像头 & YOLO 桥接设置 -->
+            <div class="tab-pane" id="tab-vision">
+              <div class="camera-bridge-grid">
+                <div class="camera-mini-card">
+                  <div class="camera-mini-actions">
+                    <select id="cameraSourceMode"><option value="sim">3D 仿真车载相机（第一人称实时渲染）</option><option value="real">物理 USB 摄像头画面</option></select>
+                    <select id="yoloAdapterMode"><option value="mock">仿真光电识别框</option><option value="http">HTTP YOLO 桥接推理</option></select>
+                  </div>
+                  <div class="camera-endpoint">
+                    <input id="yoloEndpoint" type="url" value="http://127.0.0.1:8765/predict" disabled />
+                    <button class="icon-button" id="captureFrameButton" title="捕获当前车载相机帧并推理">⌁</button>
+                  </div>
+                  <div class="camera-mini-status" id="cameraStatus">第一人称 3D 车载相机已实时连接到右侧主监视窗</div>
+                </div>
+                <div class="camera-bridge-actions">
+                  <button class="button ghost wide small" id="startCameraButton">启动真实 USB 摄像头</button>
+                  <label class="designer-checkbox-row compact-toggle">
+                    <span>车载画面显示 YOLO 识别框</span>
+                    <input type="checkbox" id="toggleCamOverlayBox" checked />
+                  </label>
+                </div>
+              </div>
+              <video id="cameraVideo" autoplay playsinline muted hidden></video>
+              <canvas id="captureCanvas" width="640" height="360" hidden></canvas>
+            </div>
+
+            <!-- Tab 5: 参数化 CAD 建模 · 拼图装配 · Rust & AI MCP 接口 -->
+            <div class="tab-pane" id="tab-cadmcp">
+              <div class="cadmcp-grid">
+                <div class="research-card">
+                  <div class="research-card-head">
+                    <strong>参数化 CAD 草图拉伸建模 &amp; 拼图吸附</strong>
+                    <span class="status-pill" id="rustEnginePill">检查 Rust 引擎...</span>
+                  </div>
+                  <div class="cadmcp-form-grid">
+                    <label><span>零件名称</span><input type="text" id="cadPartName" value="自定义碳纤护板" /></label>
+                    <label><span>截面类型</span>
+                      <select id="cadSketchKind">
+                        <option value="chamfered_rect">倒角开孔板件 (底盘/支架)</option>
+                        <option value="u_scoop">非对称 U 型导流推斗</option>
+                        <option value="polygon">自定义多边形轮廓 (JSON点阵)</option>
+                      </select>
+                    </label>
+                    <label><span>吸附接口 (Mate Port)</span>
+                      <select id="cadMountPort">
+                        <option value="top_deck">顶板标准接口 (top_deck)</option>
+                        <option value="front_bulkhead">车头前缘导轨 (front_bulkhead)</option>
+                        <option value="bottom_deck">底板安装面 (bottom_deck)</option>
+                        <option value="axle_station">传动轴站位 (axle_station)</option>
+                      </select>
+                    </label>
+                    <label><span>宽度 (mm)</span><input type="number" id="cadWidthMm" value="180" step="2" /></label>
+                    <label><span>长度 / 左翼 (mm)</span><input type="number" id="cadLengthMm" value="90" step="2" /></label>
+                    <label><span>厚度 (mm)</span><input type="number" id="cadThickMm" value="5" step="1" /></label>
+                    <label><span>密度 (kg/m³)</span><input type="number" id="cadDensity" value="1550" step="50" /></label>
+                    <label><span>偏移 X / Y / Z (mm)</span>
+                      <div class="cadmcp-xyz">
+                        <input type="number" id="cadOffX" value="0" step="2" />
+                        <input type="number" id="cadOffY" value="6" step="2" />
+                        <input type="number" id="cadOffZ" value="0" step="2" />
+                      </div>
+                    </label>
+                  </div>
+                  <div class="cadmcp-poly-row" id="cadPolyRow" hidden>
+                    <input type="text" id="cadPolyJson" value='[{"x":-0.08,"z":-0.05},{"x":0.08,"z":-0.05},{"x":0.10,"z":0.06},{"x":-0.10,"z":0.06}]' />
+                  </div>
+                  <div class="cadmcp-actions">
+                    <button class="button accent small" id="cadExtrudeSnapBtn">🧩 生成3D建模并吸附拼装</button>
+                    <button class="button ghost small" id="cadExportStlBtn">📐 导出 .STL</button>
+                    <button class="button ghost small" id="cadExportDxfBtn">✂ 导出 .DXF</button>
+                    <span class="cad-mesh-stats" id="cadMeshStats"></span>
+                  </div>
+                </div>
+
+                <div class="research-card">
+                  <div class="research-card-head">
+                    <strong>已拼装 CAD 零件 (<span id="customCadCount">0</span>) &amp; AI MCP 接口</strong>
+                    <button class="text-button" id="copyMcpConfigBtn">📋 复制 MCP 配置</button>
+                  </div>
+                  <div class="custom-cad-list" id="customCadPartsList"><div class="empty-state">尚未添加自定义 CAD 拼装件；生成后将自动按体积×密度计入整车质量与转动惯量。</div></div>
+                  <div class="mcp-box">
+                    <code>cargo run --release -p xiangqi_mcp</code>
+                    <div class="mcp-btn-row">
+                      <button class="button gold small" id="rustOptimizeBtn">🦀 调用 Rust 内核极速寻优</button>
+                      <button class="button ghost small" id="exportRustAssemblyBtn">📦 导出总装图</button>
+                    </div>
+                  </div>
+                  <div class="rust-opt-result" id="rustOptResultBox" hidden></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 右侧：常驻第一人称真实3D车载摄像头监视窗 + 遥测 + 感知队列 + 日志 -->
+        <aside class="game-panel right-panel">
+          <!-- 常驻：真实第一人称 3D 车载摄像头视角 -->
+          <section class="panel-section camera-live-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">FIRST-PERSON ONBOARD CAM</div>
+                <h3>车载摄像头真实视角</h3>
+              </div>
+              <span class="status-pill mint" id="camMountBadge">110° · 22°俯仰</span>
+            </div>
+            <div class="camera-view-strip">
+              <canvas id="cameraCanvas" width="480" height="230" title="上下拖动调俯仰 · 按住Shift上下拖动或滚轮调机高 · 左右拖动调偏航" aria-label="第一人称 3D 车载摄像头真实视角"></canvas>
+              <div class="camera-view-overlay" id="cameraViewOverlay">WEBGL REAL-3D · 黑体红白字</div>
+            </div>
+            <div class="camera-lens-controls">
+              <label class="lens-ctrl-row">
+                <span>镜头上下升降 (机高)</span>
+                <input type="range" id="quickCamHeight" min="20" max="500" step="2" value="185" />
+                <strong id="quickCamHeightVal">185 mm</strong>
+              </label>
+              <label class="lens-ctrl-row">
+                <span>镜头上下俯仰角</span>
+                <input type="range" id="quickCamPitch" min="-60" max="75" step="1" value="22" />
+                <strong id="quickCamPitchVal">22°</strong>
+              </label>
+            </div>
+            <div class="camera-meta-line" id="cameraViewMeta">机高 185mm · 俯仰 22° · 上下拖动画面可调镜头视角</div>
+          </section>
+
+          <section class="panel-section telemetry-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">LIVE TELEMETRY</div>
+                <h3>实时赛场遥测</h3>
+              </div>
+              <span class="status-pill" id="runStatePill">PAUSED</span>
+            </div>
+            <div class="telemetry-grid-3">
+              <div><span>线速度</span><strong id="velocityTelemetry">0.00</strong><small>m/s</small></div>
+              <div><span>角速度</span><strong id="omegaTelemetry">0.00</strong><small>rad/s</small></div>
+              <div><span>接触力</span><strong id="forceTelemetry">0.0</strong><small>N</small></div>
+              <div><span>有效入区</span><strong id="pieceTelemetry">0</strong><small>/ 16 枚</small></div>
+              <div><span>实时得分</span><strong id="scoreTelemetry">0</strong><small>/ 45 分</small></div>
+              <div><span>未知盲区</span><strong id="unseenTelemetry">16</strong><small>红子</small></div>
+            </div>
+            <div class="versus-compare-bar" id="versusCompareBar" hidden>
+              <span>🥊 对抗比拼</span>
+              <strong id="versusScoreDiff">甲 0 : 0 乙</strong>
+              <small id="versusTieInfo">同分金球 · 质量优势</small>
+            </div>
+            <div class="physics-feedback-bar" id="physicsFeedbackBar">
+              <span>牵引 <b id="tractionTelemetry">0%</b></span>
+              <span>打滑 <b id="slipTelemetry">0%</b></span>
+              <span>峰值 <b id="peakForceTelemetry">0.0 N</b></span>
+              <span>能耗 <b id="energyTelemetry">0 J</b></span>
+            </div>
+            <div class="pose-line" id="poseTelemetry">X 0.15 · Z 1.85 · YAW 0° · VISION</div>
+          </section>
+
+          <section class="panel-section build-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">GOAL SCORING BREAKDOWN</div>
+                <h3>球门有效棋子明细</h3>
+              </div>
+              <span class="count-badge" id="scoredCountBadge">0</span>
+            </div>
+            <div class="scored-chips" id="scoredChips"><span class="empty-state">尚无红方棋子完整进入甲方球门区</span></div>
+            <div class="plan-status" id="planStatus">准备就绪 · 纯车载视觉感知已启用</div>
+          </section>
+
+          <section class="panel-section detection-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">ONBOARD PERCEPTION</div>
+                <h3>车载视觉感知队列</h3>
+              </div>
+              <span class="status-pill mint" id="detectionCount">0 IN VIEW</span>
+            </div>
+            <div class="perception-summary" id="perceptionSummary">当前视野 0 枚 · 视觉记忆 0 枚 · 未知盲区 32 枚</div>
+            <div class="detection-list" id="detectionList"><div class="empty-state">相机视野内暂未锁定红方棋子，启动后将自动扫描</div></div>
+          </section>
+
+          <section class="panel-section log-card">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">EVENT LOG</div>
+                <h3>仿真与设计日志</h3>
+              </div>
+              <button class="text-button" id="clearLogButton">清空</button>
+            </div>
+            <div class="event-log" id="eventLog"><div><time>00:00.0</time><span>第一人称真实3D车载相机与独立CAD工坊已就绪</span></div></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- 独立全屏高自由度模块工程设计工坊 (Independent CAD & Parametric Studio)   -->
+    <!-- ====================================================================== -->
+    <div class="studio-modal" id="independentStudioModal" hidden role="dialog" aria-modal="true" aria-label="独立高自由度模块工程设计工坊">
+      <header class="studio-topbar">
+        <div class="studio-title-group">
+          <button class="button ghost" id="studioCloseBtn">← 返回 3D 赛场</button>
+          <div>
+            <div class="eyebrow">INDEPENDENT CAD &amp; PARAMETRIC DESIGN STUDIO</div>
+            <h2 id="studioModuleHeading">高自由度模块化工程设计工坊</h2>
+          </div>
+        </div>
+        <div class="studio-compliance-strip">
+          <span>质量 <b id="stSpecMass">1.47 kg</b></span>
+          <span>包络 <b id="stSpecEnv">277×234×207</b> mm</span>
+          <span>轴荷前:后 <b id="stSpecAxle">50:50</b></span>
+          <span>极速 <b id="stSpecSpeed">1.00 m/s</b></span>
+          <span>视场 <b id="stSpecVision">110°/1.75m</b></span>
+          <label class="studio-free-toggle"><input type="checkbox" id="studioUnrestrictedBox" checked /> 无限制</label>
+          <span class="status-pill mint" id="stCompPill">无限制自由模式</span>
+        </div>
+        <div class="studio-top-actions">
+          <button class="button ghost" id="studioImportBtn" title="导入先前保存的整车设计 JSON">📂 导入</button>
+          <input type="file" id="studioImportFile" accept=".json" hidden />
+          <button class="button ghost" id="studioExportBomBtn" title="导出完整整车 BOM 与策略档案">📦 导出BOM</button>
+          <button class="button ghost" id="studioResetModBtn">↺ 恢复本模块默认</button>
+          <button class="button accent" id="studioApplyBtn">✓ 应用设计并立即可视化验证</button>
+        </div>
+      </header>
+
+      <nav class="studio-module-tabs" id="studioModuleTabs" aria-label="11大独立模块无缝组装切换"></nav>
+
+      <div class="studio-workspace">
+        <!-- 左栏：架构选型、材料工艺、拓扑开关 -->
+        <aside class="studio-col studio-col-left">
+          <div class="studio-block">
+            <div class="section-kicker">BASE ARCHITECTURE</div>
+            <h3>规格基线预设</h3>
+            <select id="studioPresetSelect" class="studio-select"></select>
+          </div>
+          <div class="studio-block" id="studioMaterialBlock">
+            <div class="section-kicker">MATERIAL &amp; PROCESS</div>
+            <h3>材料与加工工艺</h3>
+            <div id="studioMaterialControls"></div>
+          </div>
+          <div class="studio-block" id="studioTopologyBlock">
+            <div class="section-kicker">TOPOLOGY &amp; FEATURES</div>
+            <h3>结构拓扑自由开关</h3>
+            <div id="studioTopologyControls"></div>
+          </div>
+          <div class="studio-block custom-cad-block" id="customCadBlock" hidden>
+            <div class="section-kicker">PARAMETRIC CAD PART LIBRARY</div>
+            <h3>自定义 CAD 拼图零件</h3>
+            <select id="customCadTemplateSelect" class="studio-select" aria-label="CAD 零件模板">
+              <option value="plate">自由板件 / 安装板</option>
+              <option value="bracket">L 型支架</option>
+              <option value="funnel">导向漏斗 / 收集翼</option>
+              <option value="connector">快拆连接块</option>
+              <option value="block">自由实体 / 外壳块</option>
+            </select>
+            <input id="customPartNameInput" class="studio-input" type="text" placeholder="零件名称，例如：双层相机支架" />
+            <div class="custom-form-grid">
+              <label>宽 <input id="customPartWidth" type="number" min="4" step="1" value="120" /><small>mm</small></label>
+              <label>长 <input id="customPartLength" type="number" min="4" step="1" value="180" /><small>mm</small></label>
+              <label>高 <input id="customPartHeight" type="number" min="2" step="1" value="60" /><small>mm</small></label>
+              <label>厚 <input id="customPartThickness" type="number" min="1" step="1" value="6" /><small>mm</small></label>
+              <label>质量 <input id="customPartMass" type="number" min="0" step="0.01" value="0.08" /><small>kg</small></label>
+              <label>颜色 <input id="customPartColor" type="color" value="#2d9279" /></label>
+              <label>X <input id="customPartX" type="number" step="1" value="0" /><small>mm</small></label>
+              <label>Y <input id="customPartY" type="number" step="1" value="115" /><small>mm</small></label>
+              <label>Z <input id="customPartZ" type="number" step="1" value="0" /><small>mm</small></label>
+              <label>Yaw <input id="customPartYaw" type="number" step="1" value="0" /><small>°</small></label>
+            </div>
+            <select id="customPartRole" class="studio-select" aria-label="自定义件用途">
+              <option value="structure">结构 / 支架件</option>
+              <option value="collector">收集 / 推送件（参与棋子接触）</option>
+              <option value="guard">防护 / 导向件</option>
+            </select>
+            <select id="customSnapSlotSelect" class="studio-select" aria-label="拼图吸附接口"></select>
+            <label class="designer-checkbox-row compact-toggle"><span>锁定已完成件</span><input id="customPartLocked" type="checkbox" /></label>
+            <div class="custom-form-actions">
+              <button class="button accent small" id="addCustomPartBtn" type="button">＋加入拼图件</button>
+              <button class="button ghost small" id="applyCustomPartBtn" type="button">应用当前参数</button>
+              <button class="button ghost small" id="exportCustomPartsBtn" type="button">导出 CAD 库</button>
+              <button class="button ghost small" id="importCustomPartsBtn" type="button">导入 CAD 库</button>
+              <input id="customPartsImportFile" type="file" accept=".json" hidden />
+            </div>
+            <div class="custom-cad-status" id="customCadStatus">请选择或新建一个自定义件</div>
+            <div class="custom-part-list" id="customPartList"></div>
+          </div>
+          <div class="studio-block studio-tip-block">
+            <strong>💡 直接交互提示</strong>
+            <p id="studioInteractionHint">可在右侧 CAD 工程图上直接用鼠标拖拽绿色/琥珀色控制柄调节几何尺寸、张角与安装位姿，或拖动黑色 Ø67mm 象棋测试机构包络。</p>
+          </div>
+        </aside>
+
+        <!-- 中栏：大幅面交互式多视图 CAD 蓝图画布 -->
+        <section class="studio-col studio-col-center">
+          <div class="studio-view-toolbar">
+            <div class="studio-view-tabs" id="studioViewTabs">
+              <button class="studio-view-btn active" data-sview="top">📐 俯视 CAD 与控制柄拖拽</button>
+              <button class="studio-view-btn" data-sview="side">📏 侧视剖面与光学遮挡</button>
+              <button class="studio-view-btn" data-sview="3d_iso">🧊 3D 实体与镜头</button>
+              <button class="studio-view-btn" data-sview="assembly">🚗 整车总装与视锥</button>
+              <button class="studio-view-btn" data-sview="live_cam">📷 第一人称真3D相机</button>
+            </div>
+            <span class="studio-cad-scale" id="studioCadMeta">SCALE 1:1 · DIRECT HANDLE DRAG ENABLED</span>
+          </div>
+          <div class="studio-canvas-wrap">
+            <canvas id="studioCadCanvas" width="840" height="540" aria-label="独立交互式模块 CAD 设计画布"></canvas>
+          </div>
+        </section>
+
+        <!-- 右栏：高自由度全量参数滑块 + 实时工程诊断 -->
+        <aside class="studio-col studio-col-right">
+          <div class="studio-block studio-params-block">
+            <div class="section-kicker">HIGH-FREEDOM PARAMETERS</div>
+            <h3>全自由度工程参数调节</h3>
+            <div class="studio-fields-list" id="studioFieldsList"></div>
+          </div>
+          <div class="studio-block cad-mcp-block" id="cadMcpBlock" hidden>
+            <div class="section-kicker">AI CAD MCP BRIDGE</div>
+            <h3>AI 制作接口</h3>
+            <div class="cad-mcp-endpoint-row">
+              <input id="cadMcpEndpoint" class="studio-input" type="url" value="http://127.0.0.1:8786/mcp" aria-label="CAD MCP 地址" />
+              <button class="button ghost small" id="cadMcpConnectBtn" type="button">连接</button>
+            </div>
+            <textarea id="cadMcpPrompt" class="cad-mcp-prompt" rows="3" placeholder="描述想做的零件，例如：做一个宽120长90高55毫米、带两个定位销的相机快拆支架"></textarea>
+            <div class="custom-form-actions">
+              <button class="button gold small" id="cadMcpGenerateBtn" type="button">✦ AI 生成 CAD 模板</button>
+              <button class="button ghost small" id="cadMcpToolsBtn" type="button">查看工具</button>
+            </div>
+            <div class="custom-cad-status" id="cadMcpStatus">本地 MCP 桥接未连接，可先启动 simulator/start_cad_mcp.ps1</div>
+          </div>
+          <div class="studio-block studio-diag-block">
+            <div class="section-kicker">ENGINEERING DIAGNOSTICS</div>
+            <h3>实时工程计算与诊断</h3>
+            <div class="studio-diag-grid" id="studioDiagnostics"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <script src="3d.js" defer></script>
+  </body>
+</html>

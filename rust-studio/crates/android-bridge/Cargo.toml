@@ -1,0 +1,10 @@
+[package]
+name = "xiangqi_android"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+xiangqi_studio = { path = "../studio-server" }

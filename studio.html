@@ -1,0 +1,3575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>光电象棋 · Rust 真3D工程工坊</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <style>
+    :root {
+      --bg: #f3f7f5;
+      --card: #ffffff;
+      --ink: #132824;
+      --muted: #5c7670;
+      --line: #d6e4de;
+      --mint: #0f9f84;
+      --mint-soft: #e6f6f2;
+      --red: #c93b4b;
+      --dark: #0e1e24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.4;
+    }
+    .app { max-width: 1420px; margin: 0 auto; padding: 10px; display: grid; gap: 10px; }
+    .topbar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .brand h1 { font-size: 16px; font-weight: 700; }
+    .pill {
+      font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+      background: #edf3f0; color: var(--muted); border: 1px solid var(--line);
+    }
+    .pill.ok { background: var(--mint-soft); color: var(--mint); border-color: rgba(15,159,132,.35); }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    button, select, input, textarea { font: inherit; }
+    .btn {
+      border: 1px solid var(--line); background: #fff; color: var(--ink);
+      padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn:hover { border-color: var(--mint); }
+    .btn.primary { background: var(--mint); color: #fff; border-color: var(--mint); }
+    .btn.gold { background: #f5b041; color: #1d1504; border-color: #e09c2b; }
+    .btn.danger { color: var(--red); }
+    .btn:disabled { opacity: .6; cursor: wait; }
+
+    .main-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 10px; align-items: start; }
+    @media (max-width: 960px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px 12px; display: grid; gap: 8px;
+    }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .card-head h2 { font-size: 13px; font-weight: 700; }
+
+    .canvas-wrap {
+      position: relative; border-radius: 10px; overflow: hidden;
+      border: 1px solid #28464d; background: #14252b;
+    }
+    #fieldCanvas { display: block; width: 100%; height: 390px; touch-action: none; cursor: grab; }
+    #fieldCanvas:active { cursor: grabbing; }
+    #camCanvas {
+      display: block; width: 100%; height: 190px;
+      border-radius: 8px; border: 1px solid #28464d; background: #0f1d22;
+    }
+    .cam-hud {
+      position: absolute; left: 8px; bottom: 8px; padding: 3px 8px; border-radius: 6px;
+      background: rgba(10, 24, 29, 0.72); color: #bdf5e4; font-size: 10.5px; pointer-events: none;
+    }
+    .dpad {
+      position: absolute; right: 10px; bottom: 10px; display: grid;
+      grid-template-columns: repeat(3, 30px); gap: 3px;
+    }
+    .dpad button {
+      width: 30px; height: 30px; border: 1px solid rgba(189,245,228,.35); border-radius: 6px;
+      background: rgba(14,30,36,.78); color: #bdf5e4; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+    .dpad button:active { background: var(--mint); color: #fff; }
+    .telemetry {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px;
+    }
+    @media (max-width: 640px) { .telemetry { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .stat { background: #f6faf8; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+    .stat span { display: block; font-size: 10px; color: var(--muted); }
+    .stat strong { font-size: 13px; font-weight: 700; }
+
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tab-btn {
+      flex: 1 1 auto; text-align: center; padding: 7px 10px; border-radius: 8px;
+      border: 1px solid var(--line); background: #f6faf8; color: var(--muted);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .tab-btn.active { background: var(--mint); color: #fff; border-color: var(--mint); }
+    .tab-pane { display: none; gap: 10px; }
+    .tab-pane.active { display: grid; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    @media (max-width: 560px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .field { display: grid; gap: 3px; }
+    .field label { font-size: 10.5px; color: var(--muted); font-weight: 600; }
+    .field input, .field select {
+      width: 100%; min-width: 0; padding: 6px 7px; border: 1px solid var(--line);
+      border-radius: 7px; background: #fff; font-size: 12px;
+    }
+    .section-title {
+      font-size: 11px; font-weight: 700; color: var(--mint);
+      border-bottom: 1px dashed var(--line); padding-bottom: 3px; margin-top: 2px;
+    }
+    .list-box { display: grid; gap: 6px; max-height: 190px; overflow-y: auto; }
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fafdfb; font-size: 11.5px;
+    }
+    .list-item small { display: block; color: var(--muted); font-size: 10px; }
+    .wheel-card {
+      background: #f6faf8; border: 1px solid var(--line); border-radius: 9px;
+      padding: 8px; display: grid; gap: 6px;
+    }
+    .wheel-hdr, .wheel-row {
+      display: grid;
+      grid-template-columns: 38px repeat(5, minmax(0, 1fr)) 60px 26px 26px 24px;
+      gap: 4px; align-items: center; font-size: 10.5px;
+    }
+    .wheel-hdr { color: var(--muted); font-weight: 700; padding: 0 5px; }
+    .wheel-list { display: grid; gap: 4px; max-height: 185px; overflow-y: auto; }
+    .wheel-row {
+      background: #fff; border: 1px solid var(--line); border-radius: 7px; padding: 4px 5px;
+    }
+    .wheel-row input[type="number"], .wheel-row select {
+      width: 100%; min-width: 0; padding: 3px 4px; border: 1px solid var(--line);
+      border-radius: 5px; font-size: 11px; background: #fff;
+    }
+    .wheel-row input[type="checkbox"] { width: 14px; height: 14px; margin: 0 auto; cursor: pointer; accent-color: var(--mint); }
+    .wheel-del {
+      border: 1px solid var(--line); background: #fff; color: var(--red); border-radius: 5px;
+      font-size: 11px; font-weight: 700; padding: 2px 0; cursor: pointer;
+    }
+    @media (max-width: 640px) {
+      .wheel-hdr { display: none; }
+      .wheel-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .row-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .code-area {
+      width: 100%; min-height: 130px; padding: 8px; border-radius: 8px;
+      border: 1px solid #26424a; background: var(--dark); color: #bdf5e4;
+      font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; resize: vertical;
+    }
+    .log-box {
+      max-height: 100px; overflow-y: auto; font-size: 11px; color: var(--muted);
+      background: #f6faf8; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px;
+      display: grid; gap: 3px;
+    }
+    .mono { font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+
+    /* ================= 高级感视觉层 (Refined UI Layer) ================= */
+    :root {
+      --bg: #eef1f0;
+      --card: rgba(255,255,255,0.86);
+      --ink: #14211e;
+      --muted: #6b7b77;
+      --line: rgba(20,40,36,0.09);
+      --mint: #13846f;
+      --mint-soft: rgba(19,132,111,0.09);
+      --gold: #c8923a;
+      --red: #c2414f;
+      --dark: #0d1719;
+      --shadow-sm: 0 1px 2px rgba(16,32,28,.05), 0 1px 1px rgba(16,32,28,.03);
+      --shadow-md: 0 6px 22px -8px rgba(16,40,34,.16), 0 2px 6px -2px rgba(16,40,34,.06);
+      --ease: cubic-bezier(.2,.8,.2,1);
+    }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: "Inter", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1100px 520px at 8% -10%, rgba(19,132,111,.10), transparent 60%),
+        radial-gradient(900px 480px at 100% 0%, rgba(200,146,58,.08), transparent 55%),
+        var(--bg);
+      background-attachment: fixed;
+      letter-spacing: .1px;
+    }
+    .app { padding: 14px; gap: 14px; }
+    .topbar {
+      position: sticky; top: 10px; z-index: 20;
+      background: rgba(255,255,255,.72);
+      backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+      border: 1px solid rgba(255,255,255,.7); border-radius: 16px; padding: 10px 16px;
+      box-shadow: var(--shadow-md);
+    }
+    .brand h1 {
+      font-size: 15px; font-weight: 750; letter-spacing: .3px;
+      background: linear-gradient(90deg, #0e3d35, #13846f 55%, #c8923a);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .pill {
+      font-size: 10.5px; font-weight: 650; padding: 3px 10px;
+      background: rgba(20,40,36,.04); border: 1px solid var(--line); color: var(--muted);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #b7c2bf; }
+    .pill.ok { background: var(--mint-soft); color: var(--mint); border-color: rgba(19,132,111,.18); }
+    .pill.ok::before { background: var(--mint); box-shadow: 0 0 0 3px rgba(19,132,111,.18); animation: pulseDot 2.2s var(--ease) infinite; }
+    @keyframes pulseDot { 0%,100% { box-shadow: 0 0 0 0 rgba(19,132,111,.35); } 50% { box-shadow: 0 0 0 5px rgba(19,132,111,0); } }
+
+    .btn {
+      border: 1px solid var(--line); background: rgba(255,255,255,.9); color: var(--ink);
+      padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
+      box-shadow: var(--shadow-sm);
+      transition: transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s, background .18s, color .18s;
+    }
+    .btn:hover { border-color: rgba(19,132,111,.35); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .btn:active { transform: translateY(0) scale(.98); }
+    .btn.primary {
+      background: linear-gradient(180deg, #1a9a82, #127a67); color: #fff; border-color: transparent;
+      box-shadow: 0 6px 16px -6px rgba(19,132,111,.55), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .btn.primary:hover { box-shadow: 0 10px 22px -8px rgba(19,132,111,.6), inset 0 1px 0 rgba(255,255,255,.2); }
+    .btn.gold {
+      background: linear-gradient(180deg, #e2b25c, #c8923a); color: #2a1c05; border-color: transparent;
+      box-shadow: 0 6px 16px -6px rgba(200,146,58,.55), inset 0 1px 0 rgba(255,255,255,.3);
+    }
+    .btn.danger { color: var(--red); }
+    .btn.danger:hover { border-color: rgba(194,65,79,.35); background: rgba(194,65,79,.05); }
+    select.btn { padding-right: 26px; }
+
+    .main-grid { gap: 14px; grid-template-columns: minmax(0,1.32fr) minmax(0,1fr); }
+    @media (max-width: 960px) { .main-grid { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--card);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.75); border-radius: 18px;
+      padding: 14px 16px; gap: 11px; box-shadow: var(--shadow-md);
+    }
+    .main-grid > .card:last-child { position: sticky; top: 78px; max-height: calc(100vh - 92px); overflow-y: auto; }
+    .card-head h2 { font-size: 12.5px; font-weight: 700; color: #22332f; letter-spacing: .2px; }
+    .card-head .mono { color: var(--muted); }
+
+    .canvas-wrap {
+      border-radius: 14px; border: 1px solid rgba(13,23,25,.6); background: #0f1b1e;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.04), 0 10px 30px -14px rgba(8,20,18,.55);
+    }
+    #fieldCanvas { height: 420px; }
+    #camCanvas { border-radius: 12px; border: none; }
+    .cam-hud {
+      left: 10px; bottom: 10px; padding: 5px 10px; border-radius: 999px;
+      background: rgba(10,20,22,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,.08); color: #d6f5ec; font-size: 10.5px; letter-spacing: .2px;
+    }
+    .dpad { right: 12px; bottom: 12px; grid-template-columns: repeat(3, 34px); gap: 4px; }
+    .dpad button {
+      width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(10,20,22,.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      color: #e2f7f1; transition: background .15s, transform .15s var(--ease);
+    }
+    .dpad button:hover { background: rgba(19,132,111,.55); }
+    .dpad button:active { transform: scale(.92); background: var(--mint); }
+
+    .telemetry { gap: 8px; }
+    .stat {
+      position: relative; overflow: hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(246,249,248,.9));
+      border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px;
+      transition: transform .2s var(--ease), box-shadow .2s var(--ease);
+    }
+    .stat::after {
+      content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 2px;
+      background: linear-gradient(90deg, var(--mint), transparent); opacity: .5;
+    }
+    .stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .stat span { font-size: 10px; letter-spacing: .4px; text-transform: uppercase; }
+    .stat strong { font-size: 14px; font-weight: 750; font-variant-numeric: tabular-nums; color: #0f2a25; }
+
+    .tabs {
+      position: sticky; top: -14px; z-index: 5;
+      display: flex; gap: 2px; padding: 4px; border-radius: 13px;
+      background: rgba(20,40,36,.05); border: 1px solid var(--line);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .tab-btn {
+      border: none; background: transparent; color: var(--muted); border-radius: 10px;
+      padding: 7px 8px; font-size: 11.5px; font-weight: 650; white-space: nowrap;
+      transition: background .22s var(--ease), color .22s, box-shadow .22s var(--ease);
+    }
+    .tab-btn:hover { color: var(--ink); background: rgba(255,255,255,.55); }
+    .tab-btn.active { background: #fff; color: var(--mint); box-shadow: 0 2px 8px -2px rgba(16,40,34,.18); border: none; }
+    .tab-pane.active { animation: paneIn .32s var(--ease); }
+    @keyframes paneIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .form-grid { gap: 9px; }
+    .field label { font-size: 10.5px; letter-spacing: .3px; color: #7a8a86; }
+    .field input, .field select, .wheel-row input[type="number"], .wheel-row select {
+      border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.95);
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .field input:focus, .field select:focus, .wheel-row input:focus, .wheel-row select:focus, .code-area:focus {
+      outline: none; border-color: rgba(19,132,111,.5); box-shadow: 0 0 0 3px rgba(19,132,111,.12);
+    }
+    input[type="checkbox"] { accent-color: var(--mint); }
+    .section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11.5px; font-weight: 750; color: #1d3a34; letter-spacing: .4px;
+      border-bottom: none; padding: 4px 0 0; margin-top: 4px;
+    }
+    .section-title::before { content: ""; width: 3px; height: 12px; border-radius: 3px; background: linear-gradient(180deg, var(--mint), var(--gold)); }
+    .section-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+
+    .list-box { gap: 5px; }
+    .list-item {
+      border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.8);
+      padding: 7px 10px; transition: border-color .18s, background .18s, transform .18s var(--ease);
+    }
+    .list-item:hover { border-color: rgba(19,132,111,.28); background: #fff; transform: translateX(2px); }
+    .wheel-card { background: rgba(246,249,248,.7); border-radius: 12px; border: 1px solid var(--line); }
+    .wheel-row { border-radius: 9px; border: 1px solid var(--line); transition: border-color .18s; }
+    .wheel-row:hover { border-color: rgba(19,132,111,.3); }
+    .code-area {
+      border-radius: 12px; border: 1px solid rgba(255,255,255,.06); background: #0d1719; color: #c9f2e5;
+      line-height: 1.55; padding: 10px 12px; box-shadow: inset 0 1px 6px rgba(0,0,0,.35);
+    }
+    .log-box {
+      border-radius: 11px; background: rgba(246,249,248,.75); border: 1px solid var(--line); padding: 7px 10px;
+    }
+    .log-box > div { animation: logIn .28s var(--ease); }
+    @keyframes logIn { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+    #serialMonitor, #refScoreboard { border-radius: 11px !important; background: #0d1719 !important; border: 1px solid rgba(255,255,255,.05); }
+    #boardTeleHud, #inspectReport { border-radius: 10px !important; background: rgba(246,249,248,.85) !important; border: 1px solid var(--line) !important; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: rgba(20,40,36,.16); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(19,132,111,.4); background-clip: padding-box; border: 2px solid transparent; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::selection { background: rgba(19,132,111,.18); }
+    #toastWrap { position: fixed; right: 18px; bottom: 18px; z-index: 100; display: grid; gap: 8px; pointer-events: none; max-width: min(420px, calc(100vw - 36px)); }
+    .toast {
+      padding: 10px 14px; border-radius: 12px; font-size: 12px; font-weight: 600; color: #e9f7f2;
+      background: rgba(13,23,25,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.08); border-left: 3px solid var(--mint);
+      box-shadow: 0 12px 30px -12px rgba(0,0,0,.5);
+      opacity: 0; transform: translateY(10px) scale(.97); transition: opacity .3s var(--ease), transform .3s var(--ease);
+    }
+    .toast.show { opacity: 1; transform: none; }
+    .toast[data-kind="warn"] { border-left-color: #e0626f; }
+    .toast[data-kind="gold"] { border-left-color: var(--gold); background: linear-gradient(90deg, rgba(60,42,12,.88), rgba(13,23,25,.85)); }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>🦀 光电象棋 · Rust 真3D工程工坊</h1>
+        <span class="pill" id="rustPill">连接 Rust 内核中...</span>
+        <span class="pill" id="wasmPill">WASM 物理加载中...</span>
+        <span class="pill ok">WebGL 真3D · 双视角实时渲染</span>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="runBtn">▶ 运行</button>
+        <button class="btn" id="stepBtn">⏭ +25ms</button>
+        <button class="btn" id="resetBtn">↺ 重置</button>
+        <button class="btn" id="camModeBtn">🎥 视角: 自由环绕3D</button>
+        <button class="btn" id="exportJsonBtn">📦 导出总装</button>
+        <a class="btn" href="3d.html" style="text-decoration:none;">高级工坊</a>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <!-- 左侧：真3D WebGL 物理视口 + 第一人称真3D车载相机 -->
+      <section class="card">
+        <div class="card-head">
+          <h2>真 3D 物理实验场 (拖拽旋转3D视角 · 滚轮缩放)</h2>
+          <span class="mono" id="fieldMeta">3000×2000×300mm · 实体建模渲染</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="fieldCanvas" width="900" height="520"></canvas>
+          <div class="cam-hud" id="orbitHud">拖拽旋转3D · 滚轮缩放 · WASD驾驶 · Q/E横移(麦轮/全向)</div>
+          <div class="dpad" aria-label="3D驾驶方向键">
+            <span></span><button id="padUp" title="前进 (W)">▲</button><span></span>
+            <button id="padLeft" title="左转 (A)">◀</button><button id="padDown" title="后退 (S)">▼</button><button id="padRight" title="右转 (D)">▶</button>
+          </div>
+        </div>
+        <div class="card-head">
+          <h2>第一人称真 3D 车载相机视角 (上下拖拽调俯仰 · 滚轮调机高)</h2>
+          <span class="mono" id="camMeta">高 185mm · 俯仰 22° · FOV 110°</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="camCanvas" width="720" height="240" style="cursor:ns-resize;"></canvas>
+          <div class="cam-hud" id="fpHud">第一人称真 3D 机位 · 速度 0.00 m/s · 携带 0 枚</div>
+        </div>
+        <div class="telemetry">
+          <div class="stat"><span>得分</span><strong id="tScore">0 / 45</strong></div>
+          <div class="stat"><span>携带 / 用时</span><strong id="tTime">0枚 · 0.0s</strong></div>
+          <div class="stat"><span>整车质量</span><strong id="tMass">1.47 kg</strong></div>
+          <div class="stat"><span>推斗口宽</span><strong id="tMouth">206 mm</strong></div>
+          <div class="stat"><span>极速</span><strong id="tSpeed">1.00 m/s</strong></div>
+          <div class="stat"><span>包络尺寸</span><strong id="tEnv">265×225</strong></div>
+        </div>
+      </section>
+
+      <!-- 右侧：极简四标签高自由度工作台 -->
+      <section class="card">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="modules">🧩 自由装配</button>
+          <button class="tab-btn" data-tab="workshop">🏭 实体造车&赛规</button>
+          <button class="tab-btn" data-tab="cad">📐 CAD 建模</button>
+          <button class="tab-btn" data-tab="opt">🚀 Rust 寻优</button>
+          <button class="tab-btn" data-tab="code">💻 仿真板&MCP</button>
+        </div>
+
+        <div class="tab-pane active" id="tab-modules">
+          <div class="row-actions">
+            <select id="mModelPreset" class="btn" style="flex:1;">
+              <option value="">✨ 快速切换整车 3D 模型预设 (8套)...</option>
+              <option value="std_mecanum">🏁 标准竞赛麦轮推斗车</option>
+              <option value="roller_blitz">⚡ 高速滚筒三连收割机</option>
+              <option value="tank_conveyor">🛡️ 重装履带传送带战车 (4枚连运)</option>
+              <option value="gate_radar">📡 门笼斗+集棋箱+360°雷达旗舰车 (6枚连运)</option>
+              <option value="hex_vacuum">🌀 八边全向负压吸盘无人机车</option>
+              <option value="arm_forklift">🦾 桁架六驱仿生机械臂采集车</option>
+              <option value="vplow_turbo">🚀 6S高压V型破阵犁+尾风扇狂暴车</option>
+              <option value="stealth_gripper">🏎️ 超低重心装甲液压剪钳突击车</option>
+            </select>
+            <button class="btn danger" id="scratchZeroBtn" title="清空所有预置轮系与收集器，从零块底盘开始自由造车">🧹 从0空车架开始</button>
+            <button class="btn primary" id="syncModulesBtn">🔄 同步 Rust</button>
+          </div>
+
+          <div class="section-title">底盘模型 · 行走机构 · 涂装（全自由无限制）</div>
+          <div class="form-grid">
+            <div class="field"><label>底盘结构模型</label>
+              <select id="mChassisStyle">
+                <option value="dual_deck">双层碳纤骨架</option>
+                <option value="truss_cage">轻量化桁架笼</option>
+                <option value="armored_box">全包竞赛装甲箱</option>
+                <option value="hex_open">六边全向开放盘</option>
+                <option value="low_rider">超低重心尾翼盘</option>
+              </select>
+            </div>
+            <div class="field"><label>驱动拓扑预设</label>
+              <select id="mDrive">
+                <option value="mecanum">四驱麦轮 (全向)</option>
+                <option value="omni">四轮全向轮</option>
+                <option value="rwd_caster">后驱+前万向轮</option>
+                <option value="tracked">双履带重装底盘</option>
+                <option value="six_wd">六驱越野高推力</option>
+              </select>
+            </div>
+            <div class="field"><label>机身涂装 / 自选色</label>
+              <div style="display:flex;gap:4px;">
+                <select id="mThemeColor" style="flex:1;">
+                  <option value="carbon">暗夜碳纤</option>
+                  <option value="titanium">钛银战甲</option>
+                  <option value="rescue">工程橙黑</option>
+                  <option value="cobalt">钴蓝电控</option>
+                  <option value="olive">战术军绿</option>
+                  <option value="custom">自定义色</option>
+                </select>
+                <input type="color" id="mCustomHex" value="#8e44ad" title="自选机身主色" style="width:32px;padding:2px;cursor:pointer;" />
+              </div>
+            </div>
+            <div class="field"><label>底盘宽 (mm)</label><input type="number" id="mChassisW" value="215" step="5" /></div>
+            <div class="field"><label>底盘长 (mm)</label><input type="number" id="mChassisL" value="235" step="5" /></div>
+            <div class="field"><label>离地高 (mm)</label><input type="number" id="mGroundClear" value="18" step="2" /></div>
+            <div class="field"><label>电机转速 (RPM)</label><input type="number" id="mRpm" value="360" step="20" /></div>
+            <div class="field"><label>前/主轮半径 (mm)</label><input type="number" id="mWheelR" value="30" step="2" /></div>
+            <div class="field"><label>物理环境</label>
+              <select id="mPreset">
+                <option value="standard">国赛标准 PVC (μ=0.78)</option>
+                <option value="slippery">湿滑亚克力 (μ=0.32)</option>
+                <option value="bouncy">高弹性碰撞 (e=0.82)</option>
+                <option value="heavy">80g 重棋负载</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-title">自定义轮胎数量 · 3D分布 · 行驶运动学（支持从0构造）</div>
+          <div class="wheel-card">
+            <div class="row-actions">
+              <select id="mWheelTemplate" class="btn" style="flex:1;">
+                <option value="">✨ 轮系与行驶方式模板 (也可从0手加)...</option>
+                <option value="blank_zero">🧹 【从0开始】0轮裸车架 (逐颗手工加轮)</option>
+                <option value="mecanum_4w">4轮 · 四驱麦克纳姆全向 (直行/旋转/平移)</option>
+                <option value="kiwi_3w">3轮 · 120°三角全向阵列 (Kiwi极速全向)</option>
+                <option value="balance_2w">2轮 · 双轮自平衡倒立摆底盘 (动态俯仰)</option>
+                <option value="ackermann_4w">4轮 · 前阿克曼转向+后宽胎竞速赛车</option>
+                <option value="crab_4ws">4轮 · 双阿克曼四轮独立转向 (小半径+蟹行)</option>
+                <option value="rocker_6wd">6轮 · 六驱摇臂深齿越野高推力底盘</option>
+                <option value="octo_8wd">8轮 · 八驱重装多轴装甲战车</option>
+                <option value="diamond_4w">4轮 · 菱形中驱+前后万向球底盘</option>
+                <option value="tracked_tank">双履带 · 六负重轮重装履带底盘</option>
+              </select>
+              <span class="pill ok" id="wheelSummaryBadge">4颗轮胎 · 4驱/0转</span>
+            </div>
+            <div class="form-grid">
+              <div class="field"><label>轮胎数量 (0~12+)</label><input type="number" id="mWheelCount" value="4" min="0" max="16" step="1" /></div>
+              <div class="field"><label>轮位排布拓扑</label>
+                <select id="mWheelLayout">
+                  <option value="symmetric_axles">对称多轴阵列</option>
+                  <option value="radial_omni">120°/环形全向阵</option>
+                  <option value="delta_tri">前一后二三角</option>
+                  <option value="diamond">菱形四方位阵</option>
+                  <option value="staggered">错位越野窄宽轴</option>
+                  <option value="tracked">履带负重轮列</option>
+                  <option value="manual_free">纯手动逐颗坐标</option>
+                </select>
+              </div>
+              <div class="field"><label>默认胎型材质</label>
+                <select id="mTireType">
+                  <option value="mecanum">45°麦轮滚子</option>
+                  <option value="omni">双排全向轮</option>
+                  <option value="rubber">竞速热熔胶胎</option>
+                  <option value="offroad">深齿越野钉胎</option>
+                  <option value="caster">万向从动球轮</option>
+                  <option value="tracked">重装履带齿块</option>
+                </select>
+              </div>
+              <div class="field"><label>行驶运动学模型</label>
+                <select id="mLocoMode">
+                  <option value="holonomic_strafe">全向平移 + 自转</option>
+                  <option value="diff_skid">双侧差速 / 滑移</option>
+                  <option value="ackermann_front">前阿克曼转向</option>
+                  <option value="ackermann_4ws">四轮双阿克曼蟹行</option>
+                  <option value="self_balance_2w">双轮自平衡动态俯仰</option>
+                  <option value="custom_vector">全自定义矢量倍率</option>
+                </select>
+              </div>
+              <div class="field"><label>后/辅轮半径 (mm)</label><input type="number" id="mRearWheelR" value="30" min="8" step="2" /></div>
+              <div class="field"><label>轮胎宽度 (mm)</label><input type="number" id="mWheelW" value="26" min="8" step="2" /></div>
+              <div class="field"><label>轮距左右 (mm)</label><input type="number" id="mWheelTrack" value="210" min="40" step="5" /></div>
+              <div class="field"><label>轴距跨度 (mm)</label><input type="number" id="mWheelBase" value="175" min="20" step="5" /></div>
+              <div class="field"><label>前进倍率 (Fwd)</label><input type="number" id="mFwdGain" value="1.0" min="0.1" step="0.1" /></div>
+              <div class="field"><label>横移倍率 (Strafe)</label><input type="number" id="mStrafeGain" value="0.8" min="0" step="0.1" /></div>
+              <div class="field"><label>转向倍率 (Omega)</label><input type="number" id="mOmegaGain" value="1.0" min="0.1" step="0.1" /></div>
+              <div class="field"><label>最大转向摆角 (°)</label><input type="number" id="mSteerDeg" value="28" min="0" max="85" step="2" /></div>
+              <div class="field"><label>抓地倍率 (Traction)</label><input type="number" id="mTractionGain" value="1.0" min="0.1" step="0.1" /></div>
+            </div>
+            <div class="row-actions">
+              <button class="btn primary" id="addWheelBtn">➕ 新增单颗轮胎</button>
+              <button class="btn" id="relayoutWheelsBtn">📐 按拓扑重排</button>
+              <button class="btn danger" id="clearWheelsBtn">🧹 清空为0轮</button>
+            </div>
+            <div class="wheel-hdr">
+              <span>轮号</span><span>X前后mm</span><span>Z左右mm</span><span>半径R</span><span>轮宽W</span><span>偏角°</span><span>胎型</span><span>驱</span><span>转</span><span>删</span>
+            </div>
+            <div class="wheel-list" id="customWheelList"></div>
+          </div>
+
+          <div class="section-title">收集装置模型 (11种 + 无收集器) · 侧翼 · 车载相机</div>
+          <div class="form-grid">
+            <div class="field"><label>收集装置模型</label>
+              <select id="mDeviceKind">
+                <option value="u_scoop">U型导流推斗</option>
+                <option value="none">无收集装置 (从0裸车/仅靠车体或CAD件)</option>
+                <option value="roller">主动滚筒吸纳轮 (3枚)</option>
+                <option value="conveyor">斜坡传送带收子舱 (4枚)</option>
+                <option value="funnel_gate">电动开合门笼斗 (4枚)</option>
+                <option value="gripper">双臂机械夹爪 (2枚)</option>
+                <option value="pincer_claw">重型液压剪式钳 (3枚)</option>
+                <option value="vacuum">负压风道吸盘 (3枚)</option>
+                <option value="brush">双排旋转毛刷</option>
+                <option value="forklift">电动双叉升降铲 (2枚)</option>
+                <option value="mag_arm">三自由度仿生机械臂 (2枚)</option>
+                <option value="plow_v">高速 V 型破阵犁</option>
+              </select>
+            </div>
+            <div class="field"><label>装置宽 (mm)</label><input type="number" id="mScoopW" value="180" step="5" /></div>
+            <div class="field"><label>装置离地 (mm)</label><input type="number" id="mMountY" value="2" step="2" /></div>
+            <div class="field"><label>左翼深 (mm)</label><input type="number" id="mLwD" value="20" step="2" /></div>
+            <div class="field"><label>左翼张角 (°)</label><input type="number" id="mLwS" value="10" step="2" /></div>
+            <div class="field"><label>右翼深 (mm)</label><input type="number" id="mRwD" value="20" step="2" /></div>
+            <div class="field"><label>右翼张角 (°)</label><input type="number" id="mRwS" value="10" step="2" /></div>
+            <div class="field"><label>相机高 (mm)</label><input type="number" id="mCamH" value="185" step="5" /></div>
+            <div class="field"><label>相机俯仰 (°)</label><input type="number" id="mCamP" value="22" step="2" /></div>
+            <div class="field"><label>相机 FOV (°)</label><input type="number" id="mCamFov" value="110" step="5" /></div>
+            <div class="field"><label>静摩擦 μ</label><input type="number" id="mMu" value="0.78" step="0.05" /></div>
+          </div>
+
+          <div class="section-title">拓展硬件 · 传感套件 · 动力电池 · 对抗与布棋</div>
+          <div class="form-grid">
+            <div class="field"><label>后置/辅助模块</label>
+              <select id="mRearMod">
+                <option value="none">无 (极轻)</option>
+                <option value="storage_bin">后置集棋翻斗箱 (+2枚)</option>
+                <option value="counterweight">钨钢防滑配重 (+0.35kg)</option>
+                <option value="turbo_fan">尾部涵道下压风扇 (+18%速)</option>
+                <option value="dual_scoop">前后双头双向收集铲</option>
+              </select>
+            </div>
+            <div class="field"><label>传感光电套件</label>
+              <select id="mSensorSuite">
+                <option value="laser3">3路安全激光 + 单目</option>
+                <option value="lidar360">360°顶部旋转激光雷达</option>
+                <option value="stereo_cam">双目立体视觉云台</option>
+                <option value="omni_ir">5路宽域激光 + 红外阵</option>
+              </select>
+            </div>
+            <div class="field"><label>动力电池方案</label>
+              <select id="mBatterySpec">
+                <option value="3s_1500">3S 11.1V 轻量锂电</option>
+                <option value="4s_2200">4S 14.8V 竞速高压 (+26%)</option>
+                <option value="6s_hv">6S 22.2V 狂暴高压 (+55%)</option>
+                <option value="2s_ultralight">2S 7.4V 极轻碳包</option>
+              </select>
+            </div>
+            <div class="field"><label>赛制对抗模式</label>
+              <select id="mMatchMode">
+                <option value="solo">单车自由探索/调优</option>
+                <option value="versus">红蓝双车3D同场对抗 (AI)</option>
+              </select>
+            </div>
+            <div class="field"><label>棋子初始阵型</label>
+              <select id="mLayoutMode">
+                <option value="grid">标准中央矩阵</option>
+                <option value="scatter">全场随机散落</option>
+                <option value="ring">环形包围阵型</option>
+                <option value="corridor">狭长走廊障碍阵</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="tab-workshop">
+          <div class="section-title">① 真实硬件选件 &amp; BOM 采购清单</div>
+          <div class="list-box" id="bomCatalogList" style="max-height:135px;"></div>
+          <div class="row-actions">
+            <span class="mono" id="bomSummary" style="flex:1;color:var(--mint);">BOM: 0 件 · 0g · ¥0</span>
+            <button class="btn primary" id="applyBomBtn">⚙️ 装机同步硬件</button>
+            <button class="btn" id="exportBomCsvBtn">📄 导出 BOM.csv</button>
+          </div>
+
+          <div class="section-title">② FDM 3D 打印机切片 &amp; 逐层打印仿真</div>
+          <div class="form-grid">
+            <div class="field"><label>待打印结构件</label>
+              <select id="prPart">
+                <option value="chassis_frame">双层底盘主框架</option>
+                <option value="front_scoop">前部收集推斗</option>
+                <option value="cam_mount">K230 相机俯仰支架</option>
+                <option value="motor_bracket">电机固定座 ×4</option>
+                <option value="battery_cage">锂电池防撞仓</option>
+              </select>
+            </div>
+            <div class="field"><label>3D 打印耗材</label>
+              <select id="prMat">
+                <option value="pla">PLA (1.24g/cm³ · ¥0.09/g)</option>
+                <option value="petg" selected>PETG (1.27g/cm³ · 韧性强)</option>
+                <option value="abs">ABS (1.04g/cm³ · 耐温轻质)</option>
+                <option value="pla_cf">PLA-CF 碳纤增强 (极刚性)</option>
+              </select>
+            </div>
+            <div class="field"><label>层高 / 填充率</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
+                <select id="prLayer">
+                  <option value="0.12">0.12mm 精打</option>
+                  <option value="0.20" selected>0.20mm 标准</option>
+                  <option value="0.28">0.28mm 快速</option>
+                </select>
+                <select id="prInfill">
+                  <option value="15">15% 轻量化</option>
+                  <option value="25" selected>25% 竞赛</option>
+                  <option value="40">40% 加强</option>
+                  <option value="80">80% 重载</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="row-actions">
+            <button class="btn primary" id="prStartBtn">🖨️ 开始 3D 打印</button>
+            <button class="btn" id="prStlBtn">📐 导出打印 STL</button>
+            <span class="mono" id="prStats" style="flex:1;color:var(--muted);">待切片</span>
+          </div>
+          <div style="height:8px;background:#e3ece9;border-radius:999px;overflow:hidden;">
+            <div id="prBar" style="height:100%;width:0%;background:linear-gradient(90deg,#1a7a68,#d48a1f);transition:width .08s;"></div>
+          </div>
+          <div class="mono" id="printedList" style="color:var(--muted);">已打印入库零件: 无</div>
+
+          <div class="section-title">③ 实车安装制作 6 步工序单</div>
+          <div class="list-box" id="buildStepsList" style="max-height:120px;"></div>
+          <div class="row-actions">
+            <label style="font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+              <input type="checkbox" id="strictRealMode" /> 🔒 启用真实制作约束 (需打印+装调+检录合格才可发车)
+            </label>
+            <button class="btn gold" id="autoBuildAllBtn">⚡ 一键完成装调与检录</button>
+          </div>
+
+          <div class="section-title">④ 全国光电设计竞赛 · 官方规则裁判与检录</div>
+          <div class="row-actions">
+            <select id="ruleModeSelect" class="btn" style="flex:1;">
+              <option value="official_180">🏆 官方标准赛 (180s · 误推黑棋-3分 · 300mm限框)</option>
+              <option value="official_120">⏱️ 官方冲刺赛 (120s · 误推黑棋-3分 · 300mm限框)</option>
+              <option value="free">🧪 自由调试模式 (无限时 · 不锁发车)</option>
+            </select>
+            <button class="btn primary" id="inspectBtn">📋 官方检录</button>
+            <button class="btn danger" id="refResetBtn">🚩 裁判复位(+5s)</button>
+          </div>
+          <div class="mono" id="inspectReport" style="padding:5px 8px;background:#f4f9f7;border:1px solid var(--line);border-radius:6px;color:var(--ink);">检录状态: 待检录（点击「官方检录」检测 300×300×300mm 限框、限重与出发区）</div>
+          <div class="mono" id="refScoreboard" style="padding:5px 8px;background:#0e1e24;color:#8cf7d8;border-radius:6px;">官方计分板: 净得分 0 (红棋 +0 · 误推黑棋 0枚 -0 · 罚时 +0s) · 剩余 180.0s</div>
+
+          <div class="section-title">⑤ 战绩排行榜 (本地保存 Top 10)</div>
+          <div class="list-box" id="matchHistory" style="max-height:150px;"></div>
+          <div class="row-actions">
+            <span class="mono" style="flex:1;color:var(--muted);">快捷键: 空格 运行/暂停 · R 重置 · C 切视角 · 1-5 切标签 · I 检录</span>
+            <button class="btn danger" id="clearHistoryBtn">清空战绩</button>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="tab-cad">
+          <div class="form-grid">
+            <div class="field"><label>零件名称</label><input type="text" id="cName" value="自定义碳纤护板" /></div>
+            <div class="field"><label>截面类型 (8种)</label>
+              <select id="cKind">
+                <option value="chamfered_rect">倒角开孔板</option>
+                <option value="u_scoop">非对称 U 型推斗</option>
+                <option value="l_bracket">L 型加强支架</option>
+                <option value="hex_plate">六边形轻量化平台</option>
+                <option value="gear_wheel">参数化齿轮 / 编码盘</option>
+                <option value="ring_flange">法兰圆环 / 镜头护罩</option>
+                <option value="u_channel">U 型槽钢 / 电池框</option>
+                <option value="polygon">自定义多边形 JSON</option>
+              </select>
+            </div>
+            <div class="field"><label>吸附接口</label>
+              <select id="cPort">
+                <option value="top_deck">顶板 (top_deck)</option>
+                <option value="front_bulkhead">前缘 (front_bulkhead)</option>
+                <option value="bottom_deck">底板 (bottom_deck)</option>
+                <option value="axle_station">轴站 (axle_station)</option>
+              </select>
+            </div>
+            <div class="field"><label>宽 / 外径 (mm)</label><input type="number" id="cW" value="180" step="5" /></div>
+            <div class="field"><label>长 (mm)</label><input type="number" id="cL" value="90" step="5" /></div>
+            <div class="field"><label>厚 (mm)</label><input type="number" id="cT" value="5" step="1" /></div>
+            <div class="field"><label>密度 (kg/m³)</label><input type="number" id="cDensity" value="1550" step="50" /></div>
+            <div class="field"><label>偏移 X / Y (mm)</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
+                <input type="number" id="cOx" value="0" step="2" />
+                <input type="number" id="cOy" value="6" step="2" />
+              </div>
+            </div>
+            <div class="field"><label>偏移 Z / 偏航 / 色</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr 28px;gap:3px;">
+                <input type="number" id="cOz" value="0" step="2" title="Z前后偏移(mm)" />
+                <input type="number" id="cYaw" value="0" step="15" title="偏航角(°)" />
+                <input type="color" id="cColor" value="#2d9279" title="零件颜色" style="padding:1px;cursor:pointer;" />
+              </div>
+            </div>
+          </div>
+          <div class="field" id="cPolyWrap" style="display:none;">
+            <label>多边形点阵 (米)</label>
+            <input type="text" id="cPoly" value='[{"x":-0.08,"z":-0.05},{"x":0.08,"z":-0.05},{"x":0.10,"z":0.06},{"x":-0.10,"z":0.06}]' />
+          </div>
+          <div class="row-actions">
+            <button class="btn primary" id="cadExtrudeBtn">🧩 Rust 拉伸并3D装配</button>
+            <button class="btn" id="expChassisStlBtn">📐 底盘 STL</button>
+            <button class="btn" id="expScoopStlBtn">📐 推斗 STL</button>
+            <span class="mono" id="cadStats" style="color:var(--mint);"></span>
+          </div>
+          <div class="list-box" id="cadList">
+            <div class="list-item"><span>暂无自定义 CAD 拼装件</span></div>
+          </div>
+        </div>
+
+        <div class="tab-pane" id="tab-opt">
+          <div class="row-actions">
+            <button class="btn gold" id="optRunBtn">🦀 Rust 多核并行寻优 (16预设+进化寻优×4种子)</button>
+            <button class="btn" id="headlessRunBtn">⚡ 运行单场 120s 物理评估</button>
+          </div>
+          <div class="mono" id="optStatus">点击上方按钮，直接在 Rust 原生引擎并行评估并排序最优结构。</div>
+          <div class="list-box" id="optList"></div>
+        </div>
+
+        <div class="tab-pane" id="tab-code">
+          <div class="form-grid">
+            <div class="field"><label>仿真主控板型号</label>
+              <select id="boardType">
+                <option value="K230_LINUX">CanMV K230 视觉主控</option>
+                <option value="STM32_F4">STM32F407 实时电控板</option>
+                <option value="ESP32_S3">ESP32-S3 双核全向主控</option>
+                <option value="ARDUINO_MEGA">Arduino Mega 2560</option>
+              </select>
+            </div>
+            <div class="field"><label>编程语言兼容模式</label>
+              <select id="codeLang">
+                <option value="arduino_c">C / Arduino (setup / loop)</option>
+                <option value="micropython">Python / K230 MicroPython</option>
+                <option value="js_sdk">JavaScript 硬件 SDK / decide</option>
+              </select>
+            </div>
+            <div class="field"><label>主控频率 (Hz)</label>
+              <input type="number" id="boardHz" value="50" min="10" max="200" step="10" />
+            </div>
+          </div>
+          <div class="row-actions">
+            <select id="strategyPreset" class="btn" style="flex:1;">
+              <option value="c_vision_pid">[C / Arduino] 麦轮逆解+视觉PID追子固件</option>
+              <option value="py_k230_vision">[Python / K230] 视觉识别+PID闭环收子固件</option>
+              <option value="c_pwm_circle">[C / Arduino] 逐轮PWM差速/麦轮直驱测试</option>
+              <option value="js_board_sdk">[JS SDK] 仿真板全向逆解+激光避障</option>
+              <option value="funnel">[兼容旧版] 纯视觉巡检推子 (decide)</option>
+              <option value="sweep">[兼容旧版] 侧翼大范围扫场 (decide)</option>
+            </select>
+            <button class="btn primary" id="applyCodeBtn">⚡ 编译烧录</button>
+            <button class="btn" id="flashAndRunBtn">🔄 烧录并复位</button>
+            <button class="btn" id="exportCodeBtn">💾 导出源码</button>
+            <button class="btn" id="clearSerialBtn">🧹 清空串口</button>
+            <button class="btn" id="mcpListBtn">🤖 MCP</button>
+          </div>
+          <div class="mono" id="boardStatus" style="color:var(--mint);">仿真板就绪：等待编译烧录...</div>
+          <div class="mono" id="boardTeleHud" style="font-size:11px;color:#5c7279;padding:4px 8px;background:#eef5f7;border-radius:6px;border:1px solid #d7e4e8;">MCU: 0 ticks · 模式: 速度闭环 · 总线: 11.1V · PWM: [--]</div>
+          <textarea class="code-area" id="codeInput" style="min-height:175px;"></textarea>
+          <div class="log-box" id="serialMonitor" style="max-height:95px;background:#0e1e24;color:#8cf7d8;font-family:ui-monospace,Consolas,monospace;">[串口监视器] 就绪 (支持 Serial.println / print / board.log)</div>
+          <div class="log-box" id="mcpOut">MCP 接口就绪：stdio 命令 XiangqiMcpServer.exe 或 /api/mcp/call</div>
+        </div>
+
+        <div class="log-box" id="eventLog"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const FIELD_W = 3.0, FIELD_D = 2.0, PIECE_R = 0.0335, PIECE_H = 0.017;
+    const GOAL = { minX: 0.05, maxX: 0.55, minZ: 0.65, maxZ: 1.35 };
+
+    const STRATEGIES = {
+      c_vision_pid: `// Arduino / STM32 C++ 仿真板固件 (支持 setup / loop + 逐轮PWM)
+#define KP_TURN 2.6
+float targetDist = 0.0;
+
+void setup() {
+  Serial.println("K230/STM32 仿真固件启动完成!");
+}
+
+void loop() {
+  int cnt = getCameraCount();
+  if (cnt == 0) {
+    // 无目标时原地缓慢扫描
+    setVelocity(0.22, 1.35, 0.0);
+    return;
+  }
+  // 读取视觉最近红棋
+  var obj = getCameraObject(0);
+  float err = obj.angle;
+  float v = fabs(err) > 0.7 ? 0.20 : 0.92;
+  float omega = constrain(err * KP_TURN, -3.5, 3.5);
+  // 若使用4轮麦轮，也可直接用 setMotorPWM(i, pwm) 下发逐轮PWM
+  setVelocity(v, omega, 0.0);
+  if (millis() % 1000 < 25) {
+    Serial.println("目标:" + obj.label + " 距:" + obj.dist.toFixed(2) + "m 电压:" + getBatteryVoltage().toFixed(1) + "V");
+  }
+}`,
+      py_k230_vision: `# CanMV K230 MicroPython 视觉闭环固件 (直接运行 Python 语法)
+def setup(board):
+    print("K230 MicroPython 视觉固件初始化完成")
+
+def loop(board):
+    objs = board.camera_detect()
+    imu = board.imu()
+    if len(objs) == 0:
+        board.set_velocity(0.24, 1.4, 0.0)
+        return
+    t = objs[0]
+    err = t.angle
+    v = 0.22 if abs(err) > 0.75 else 0.94
+    w = max(-3.6, min(3.6, err * 2.8))
+    board.set_velocity(v, w, 0.0)
+    if board.millis() % 1000 < 25:
+        print("锁定:", t.label, "距离:", round(t.dist, 2), "Yaw:", round(imu.yawDeg, 1))`,
+      c_pwm_circle: `// 逐轮底层 PWM 直驱固件：直接向 0..N 号车轮电机发送 PWM (-1.0 ~ 1.0)
+void setup() {
+  Serial.println("逐轮 PWM 直驱模式已激活，轮数=" + getWheelCount());
+}
+
+void loop() {
+  float laser = readLaser(1); // 正前方激光测距(m)
+  if (laser < 0.45) {
+    // 遇墙或棋子近距离原地右转 (左轮正转, 右轮反转)
+    setMotorPWM(0, 0.7); setMotorPWM(1, -0.7);
+    setMotorPWM(2, 0.7); setMotorPWM(3, -0.7);
+  } else {
+    // 麦轮右前方斜行/或四轮直行
+    setMotorPWM(0, 0.85); setMotorPWM(1, 0.85);
+    setMotorPWM(2, 0.85); setMotorPWM(3, 0.85);
+  }
+}`,
+      js_board_sdk: `// JS 硬件 SDK 模式：直接读写 IMU / 激光 / 相机 / 逐轮 PWM
+function setup(board) {
+  board.log("JS SDK 仿真板上线，控制周期 " + board.hz + "Hz");
+}
+function loop(board) {
+  const objs = board.camera_detect();
+  const frontLaser = board.readLaser(1);
+  if (frontLaser < 0.22 && !objs.length) {
+    board.setVelocity(-0.35, 1.8, 0);
+    return;
+  }
+  const t = objs[0];
+  if (!t) { board.setVelocity(0.28, 1.35, 0); return; }
+  const diff = t.angle;
+  board.setVelocity(Math.abs(diff) > 0.8 ? 0.2 : 0.95, Math.max(-3.6, Math.min(3.6, diff * 3.0)), 0);
+}`,
+      funnel: `function decide(ctx) {
+  // 主动收集机构(滚筒/夹爪/吸盘)已携满棋子时，平滑直奔红区卸子得分
+  if (ctx.maxHold > 0 && (ctx.heldCount >= ctx.maxHold || (ctx.heldCount > 0 && !ctx.visiblePieces.length))) {
+    const desired = Math.atan2(1.0 - ctx.robot.z, 0.25 - ctx.robot.x);
+    let diff = desired - ctx.robot.yaw;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    return { v: Math.abs(diff) > 0.9 ? 0.18 : 0.95, omega: Math.max(-3.6, Math.min(3.6, diff * 3.2)) };
+  }
+  const target = ctx.visiblePieces[0] || ctx.memory[0];
+  if (!target) return { v: 0.28, omega: 1.35 };
+  if (ctx.maxHold > 0) {
+    // 主动收集机构直接朝目标棋子丝滑切入吸取
+    const desired = Math.atan2(target.z - ctx.robot.z, target.x - ctx.robot.x);
+    let diff = desired - ctx.robot.yaw;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    return { v: Math.abs(diff) > 0.85 ? 0.18 : 0.88, omega: Math.max(-3.5, Math.min(3.5, diff * 3.1)) };
+  }
+  const dx = target.x - ctx.robot.x, dz = target.z - ctx.robot.z;
+  const dist = Math.hypot(dx, dz);
+  const gx = 0.25 - target.x, gz = 1.0 - target.z;
+  const gLen = Math.max(0.01, Math.hypot(gx, gz));
+  const alignedBehind = ctx.robot.x > target.x - 0.03 && dist < 0.30;
+  const aimX = alignedBehind ? 0.22 : target.x - (gx / gLen) * 0.22;
+  const aimZ = alignedBehind ? 1.0 : target.z - (gz / gLen) * 0.22;
+  const desired = Math.atan2(aimZ - ctx.robot.z, aimX - ctx.robot.x);
+  let diff = desired - ctx.robot.yaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return { v: Math.abs(diff) > 0.85 ? 0.18 : 0.88, omega: Math.max(-3.5, Math.min(3.5, diff * 3.1)) };
+}`,
+      sweep: `function decide(ctx) {
+  if (ctx.heldCount > 0 && ctx.heldCount >= Math.max(1, ctx.maxHold)) {
+    const desired = Math.atan2(1.0 - ctx.robot.z, 0.25 - ctx.robot.x);
+    let diff = desired - ctx.robot.yaw;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    return { v: 0.95, omega: Math.max(-3.8, Math.min(3.8, diff * 3.4)) };
+  }
+  const target = ctx.visiblePieces[0];
+  if (!target) return { v: 0.4, omega: 1.6 };
+  const desired = Math.atan2(target.z - ctx.robot.z, target.x - ctx.robot.x);
+  let diff = desired - ctx.robot.yaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return { v: 0.9, omega: Math.max(-3.8, Math.min(3.8, diff * 3.5)) };
+}`
+    };
+
+    const state = {
+      rustOk: false,
+      wasm: null,
+      wasmReady: false,
+      wasmTele: { tractionN: 0, slip: 0, driveN: 0, slipCount: 0, busV: 11.1, curA: 0.4, batPct: 100, wrongPieces: 0, netScore: 0 },
+      workshop: {
+        bomSelected: { m_mg513: 4, b_k230: 1, bat_3s: 1, w_mec60: 1, drv_tb6612: 2, sen_vl53: 1, f_m3kit: 1, w_xt60: 1 },
+        printedParts: {},
+        printingTimer: null,
+        stepsDone: [true, false, false, false, false, false],
+        strictMode: false,
+      },
+      referee: {
+        mode: "official_180",
+        limitSec: 180,
+        penaltySec: 0,
+        resetCount: 0,
+        finished: false,
+        inspectedOk: false,
+      },
+      board: {
+        type: "K230_LINUX",
+        lang: "arduino_c",
+        hz: 50,
+        accumDt: 0,
+        outputMode: "velocity",
+        pwms: new Array(16).fill(0),
+        velCmd: { v: 0, vLat: 0, omega: 0 },
+        setupFn: null,
+        loopFn: null,
+        legacyFn: null,
+        ticks: 0,
+        gpioModes: {},
+        gpioVals: {},
+        motorPinMap: {},
+        encoderTicks: new Array(16).fill(0),
+        wheelRPS: new Array(16).fill(0),
+        lastWheelSpin: 0,
+      },
+      running: false,
+      time: 0,
+      mu: 0.78,
+      camFollowMode: "orbit", // "orbit" | "chase" | "fps"
+      orbit: { yaw: -0.78, pitch: 0.42, dist: 1.75, tx: 1.05, tz: 1.0 },
+      chaseCam: { x: -0.20, z: 1.0, yaw: 0.0 },
+      resolved: { total_mass: 1.47, mouth_width: 0.206, max_speed: 1.0, envelope: [0.265, 0.225, 0.19], driven_wheel_count: 4 },
+      customParts: [],
+      customWheels: [],
+      robot: { x: 0.45, z: 1.0, yaw: 0.0, v: 0, vLat: 0, omega: 0, wheelSpin: 0, mechPhase: 0, steerAngle: 0, pitch: 0 },
+      enemy: { x: 2.58, z: 1.0, yaw: Math.PI, v: 0, omega: 0, wheelSpin: 0 },
+      keys: { w: false, s: false, a: false, d: false, q: false, e: false },
+      pieces: [],
+      memory: [],
+      strategyFn: null,
+    };
+
+    const WHEEL_TEMPLATES = {
+      blank_zero:     { count: 0, layout: "manual_free",     tire: "rubber",  loco: "custom_vector",   drive: "mecanum",    wr: 30, rr: 30, ww: 26, trk: 210, wb: 175, fwd: 1.0, strafe: 0.0, omg: 1.0, steer: 28, trac: 1.0 },
+      mecanum_4w:     { count: 4, layout: "symmetric_axles", tire: "mecanum", loco: "holonomic_strafe",drive: "mecanum",    wr: 30, rr: 30, ww: 26, trk: 210, wb: 175, fwd: 1.0, strafe: 0.8, omg: 1.0, steer: 0,  trac: 1.0 },
+      kiwi_3w:        { count: 3, layout: "radial_omni",     tire: "omni",    loco: "holonomic_strafe",drive: "omni",       wr: 28, rr: 28, ww: 22, trk: 205, wb: 205, fwd: 1.1, strafe: 0.9, omg: 1.2, steer: 0,  trac: 0.98 },
+      balance_2w:     { count: 2, layout: "symmetric_axles", tire: "rubber",  loco: "self_balance_2w", drive: "rwd_caster", wr: 38, rr: 38, ww: 28, trk: 220, wb: 0,   fwd: 1.15,strafe: 0.0, omg: 1.3, steer: 0,  trac: 1.15 },
+      ackermann_4w:   { count: 4, layout: "symmetric_axles", tire: "rubber",  loco: "ackermann_front", drive: "rwd_caster", wr: 28, rr: 34, ww: 28, trk: 210, wb: 185, fwd: 1.2, strafe: 0.0, omg: 1.05,steer: 34, trac: 1.2 },
+      crab_4ws:       { count: 4, layout: "symmetric_axles", tire: "rubber",  loco: "ackermann_4ws",   drive: "mecanum",    wr: 30, rr: 30, ww: 26, trk: 215, wb: 185, fwd: 1.1, strafe: 0.75,omg: 1.35,steer: 42, trac: 1.18 },
+      rocker_6wd:     { count: 6, layout: "staggered",       tire: "offroad", loco: "diff_skid",       drive: "six_wd",     wr: 32, rr: 32, ww: 28, trk: 215, wb: 195, fwd: 0.95,strafe: 0.0, omg: 0.9, steer: 0,  trac: 1.32 },
+      octo_8wd:       { count: 8, layout: "symmetric_axles", tire: "offroad", loco: "diff_skid",       drive: "six_wd",     wr: 28, rr: 28, ww: 24, trk: 220, wb: 210, fwd: 0.92,strafe: 0.0, omg: 0.85,steer: 16, trac: 1.45 },
+      diamond_4w:     { count: 4, layout: "diamond",         tire: "omni",    loco: "holonomic_strafe",drive: "omni",       wr: 28, rr: 24, ww: 22, trk: 215, wb: 215, fwd: 1.05,strafe: 0.85,omg: 1.25,steer: 18, trac: 1.0 },
+      tracked_tank:   { count: 6, layout: "tracked",         tire: "tracked", loco: "diff_skid",       drive: "tracked",    wr: 30, rr: 30, ww: 34, trk: 222, wb: 190, fwd: 0.92,strafe: 0.0, omg: 0.95,steer: 0,  trac: 1.4 },
+    };
+
+    function generateWheelLayout(layout, count, cfg = {}) {
+      const n = Math.max(0, Math.min(20, Math.round(Number(count) || 0)));
+      if (n === 0) return [];
+      const fr = Math.max(0.008, (cfg.frontR ?? Number($("mWheelR")?.value) ?? 30) / 1000);
+      const rr = Math.max(0.008, (cfg.rearR ?? Number($("mRearWheelR")?.value) ?? 30) / 1000);
+      const ww = Math.max(0.008, (cfg.width ?? Number($("mWheelW")?.value) ?? 26) / 1000);
+      const trk = Math.max(0.04, (cfg.track ?? Number($("mWheelTrack")?.value) ?? 210) / 1000);
+      const wb = Math.max(0.02, (cfg.wheelbase ?? Number($("mWheelBase")?.value) ?? 175) / 1000);
+      const tType = cfg.tireType || $("mTireType")?.value || "mecanum";
+      const lMode = cfg.locoMode || $("mLocoMode")?.value || "holonomic_strafe";
+      const halfZ = trk * 0.5, halfX = wb * 0.5;
+      const out = [];
+
+      if (layout === "radial_omni" || (layout === "manual_free" && tType === "omni" && n === 3)) {
+        const rad = Math.max(0.06, Math.hypot(halfZ, halfX) * 0.78);
+        for (let k = 0; k < n; k++) {
+          const ang = (k / n) * Math.PI * 2;
+          const deg = Math.round((ang * 180 / Math.PI) + 90);
+          out.push({
+            id: `w${k + 1}`,
+            x_m: Number((Math.cos(ang) * rad).toFixed(3)),
+            z_m: Number((Math.sin(ang) * rad).toFixed(3)),
+            radius_m: fr, width_m: ww, yaw_deg: deg, tire_type: tType, driven: true, steered: false,
+          });
+        }
+        return out;
+      }
+
+      if (layout === "delta_tri" && n >= 2) {
+        out.push({
+          id: "w1", x_m: Number(halfX.toFixed(3)), z_m: 0,
+          radius_m: Math.max(0.012, Number((fr * 0.65).toFixed(3))), width_m: Math.max(0.014, Number((ww * 0.8).toFixed(3))),
+          yaw_deg: 0, tire_type: lMode === "ackermann_front" ? "rubber" : "caster",
+          driven: lMode === "holonomic_strafe", steered: true,
+        });
+        const rem = n - 1;
+        const pairs = Math.floor(rem / 2);
+        for (let p = 0; p < pairs; p++) {
+          const xm = -halfX * (0.85 - p * 0.35);
+          out.push({ id: `w${out.length + 1}`, x_m: Number(xm.toFixed(3)), z_m: Number((-halfZ).toFixed(3)), radius_m: rr, width_m: ww, yaw_deg: 0, tire_type: tType, driven: true, steered: false });
+          out.push({ id: `w${out.length + 1}`, x_m: Number(xm.toFixed(3)), z_m: Number((halfZ).toFixed(3)), radius_m: rr, width_m: ww, yaw_deg: 0, tire_type: tType, driven: true, steered: false });
+        }
+        if (rem % 2 === 1) {
+          out.push({ id: `w${out.length + 1}`, x_m: Number((-halfX * 0.9).toFixed(3)), z_m: 0, radius_m: rr, width_m: ww, yaw_deg: 0, tire_type: tType, driven: true, steered: false });
+        }
+        return out;
+      }
+
+      if (layout === "diamond" && n >= 4) {
+        const pts = [
+          { x: halfX, z: 0, r: fr, yaw: 90, t: lMode === "holonomic_strafe" ? "omni" : "caster", dr: lMode === "holonomic_strafe", st: lMode !== "holonomic_strafe" },
+          { x: -halfX, z: 0, r: rr, yaw: 90, t: lMode === "holonomic_strafe" ? "omni" : "caster", dr: lMode === "holonomic_strafe", st: lMode === "ackermann_4ws" },
+          { x: 0, z: -halfZ, r: fr, yaw: 0, t: tType, dr: true, st: false },
+          { x: 0, z: halfZ, r: fr, yaw: 0, t: tType, dr: true, st: false },
+        ];
+        pts.forEach((p, idx) => out.push({
+          id: `w${idx + 1}`, x_m: Number(p.x.toFixed(3)), z_m: Number(p.z.toFixed(3)),
+          radius_m: p.r, width_m: ww, yaw_deg: p.yaw, tire_type: p.t, driven: p.dr, steered: p.st,
+        }));
+        for (let k = 4; k < n; k++) {
+          const signZ = (k % 2 === 0 ? -1 : 1) * halfZ * 0.88;
+          const xOff = (Math.floor((k - 4) / 2) % 2 === 0 ? 1 : -1) * halfX * 0.55;
+          out.push({ id: `w${k + 1}`, x_m: Number(xOff.toFixed(3)), z_m: Number(signZ.toFixed(3)), radius_m: rr, width_m: ww, yaw_deg: 0, tire_type: tType, driven: true, steered: false });
+        }
+        return out;
+      }
+
+      if (n === 2) {
+        out.push({ id: "w1", x_m: 0, z_m: Number((-halfZ).toFixed(3)), radius_m: fr, width_m: ww, yaw_deg: 0, tire_type: tType, driven: true, steered: false });
+        out.push({ id: "w2", x_m: 0, z_m: Number((halfZ).toFixed(3)), radius_m: fr, width_m: ww, yaw_deg: 0, tire_type: tType, driven: true, steered: false });
+        return out;
+      }
+
+      const pairs = Math.floor(n / 2);
+      const rem = n % 2;
+      for (let p = 0; p < pairs; p++) {
+        const u = pairs === 1 ? 0 : 1 - (2 * p) / (pairs - 1);
+        const xm = Number((u * halfX).toFixed(3));
+        const isFront = u > 0.1;
+        const r = isFront ? fr : rr;
+        const zScale = layout === "staggered" && (p % 2 === 1) ? 1.12 : 1.0;
+        const steered = (lMode === "ackermann_4ws") || (lMode === "ackermann_front" && isFront) || (layout === "tracked" ? false : false);
+        const driven = !(lMode === "ackermann_front" && isFront && tType === "rubber");
+        out.push({ id: `w${out.length + 1}`, x_m: xm, z_m: Number((-halfZ * zScale).toFixed(3)), radius_m: r, width_m: ww, yaw_deg: 0, tire_type: layout === "tracked" ? "tracked" : tType, driven, steered });
+        out.push({ id: `w${out.length + 1}`, x_m: xm, z_m: Number((halfZ * zScale).toFixed(3)), radius_m: r, width_m: ww, yaw_deg: 0, tire_type: layout === "tracked" ? "tracked" : tType, driven, steered });
+      }
+      if (rem === 1) {
+        out.push({ id: `w${out.length + 1}`, x_m: Number(halfX.toFixed(3)), z_m: 0, radius_m: Math.max(0.012, Number((fr * 0.65).toFixed(3))), width_m: ww, yaw_deg: 0, tire_type: "caster", driven: false, steered: true });
+      }
+      return out;
+    }
+
+    function updateWheelSummaryBadge() {
+      const ws = state.customWheels || [];
+      const drv = ws.filter((w) => w.driven).length;
+      const str = ws.filter((w) => w.steered).length;
+      if ($("mWheelCount")) $("mWheelCount").value = ws.length;
+      const badge = $("wheelSummaryBadge");
+      if (badge) {
+        badge.textContent = ws.length === 0 ? "0颗轮胎 · 从0裸车架" : `${ws.length}颗轮胎 · ${drv}驱/${str}转`;
+        badge.className = drv === 0 && ($("mRearMod")?.value !== "turbo_fan") ? "pill" : "pill ok";
+      }
+    }
+
+    function renderWheelList() {
+      updateWheelSummaryBadge();
+      const box = $("customWheelList");
+      if (!box) return;
+      if (!state.customWheels.length) {
+        box.innerHTML = '<div class="list-item"><span>当前 0 颗轮胎（从 0 裸车状态）— 点击上方 <b>➕ 新增单颗轮胎</b> 或选模板快速布置</span></div>';
+        return;
+      }
+      box.innerHTML = state.customWheels.map((w, idx) => `
+        <div class="wheel-row" data-widx="${idx}">
+          <strong class="mono">#${idx + 1}</strong>
+          <input type="number" class="w-x" value="${Math.round((w.x_m || 0) * 1000)}" step="5" title="前后偏移 X (mm)" />
+          <input type="number" class="w-z" value="${Math.round((w.z_m || 0) * 1000)}" step="5" title="左右偏移 Z (mm)" />
+          <input type="number" class="w-r" value="${Math.round((w.radius_m || 0.03) * 1000)}" min="6" step="2" title="轮半径 (mm)" />
+          <input type="number" class="w-w" value="${Math.round((w.width_m || 0.026) * 1000)}" min="6" step="2" title="轮宽 (mm)" />
+          <input type="number" class="w-yaw" value="${Math.round(w.yaw_deg || 0)}" step="15" title="安装偏航角 (°)" />
+          <select class="w-type" title="单轮材质类型">
+            <option value="mecanum" ${w.tire_type === "mecanum" ? "selected" : ""}>麦轮</option>
+            <option value="omni" ${w.tire_type === "omni" ? "selected" : ""}>全向</option>
+            <option value="rubber" ${w.tire_type === "rubber" ? "selected" : ""}>胶胎</option>
+            <option value="offroad" ${w.tire_type === "offroad" ? "selected" : ""}>越野</option>
+            <option value="caster" ${w.tire_type === "caster" ? "selected" : ""}>万向</option>
+            <option value="tracked" ${w.tire_type === "tracked" ? "selected" : ""}>履带</option>
+          </select>
+          <input type="checkbox" class="w-drv" ${w.driven ? "checked" : ""} title="是否电机驱动" />
+          <input type="checkbox" class="w-str" ${w.steered ? "checked" : ""} title="是否参与转向" />
+          <button type="button" class="wheel-del" title="删除此轮胎">✕</button>
+        </div>
+      `).join("");
+
+      box.querySelectorAll(".wheel-row").forEach((row) => {
+        const idx = Number(row.dataset.widx);
+        const onEdit = () => {
+          const w = state.customWheels[idx];
+          if (!w) return;
+          w.x_m = (Number(row.querySelector(".w-x").value) || 0) / 1000;
+          w.z_m = (Number(row.querySelector(".w-z").value) || 0) / 1000;
+          w.radius_m = Math.max(0.006, (Number(row.querySelector(".w-r").value) || 30) / 1000);
+          w.width_m = Math.max(0.006, (Number(row.querySelector(".w-w").value) || 26) / 1000);
+          w.yaw_deg = Number(row.querySelector(".w-yaw").value) || 0;
+          w.tire_type = row.querySelector(".w-type").value;
+          w.driven = row.querySelector(".w-drv").checked;
+          w.steered = row.querySelector(".w-str").checked;
+          if ($("mWheelLayout")) $("mWheelLayout").value = "manual_free";
+          updateWheelSummaryBadge();
+          scheduleSync();
+        };
+        row.querySelectorAll("input, select").forEach((inp) => inp.addEventListener("input", onEdit));
+        row.querySelector(".w-type").addEventListener("change", onEdit);
+        row.querySelector(".wheel-del").addEventListener("click", () => {
+          state.customWheels.splice(idx, 1);
+          if ($("mWheelLayout")) $("mWheelLayout").value = "manual_free";
+          renderWheelList();
+          syncModulesToRust();
+        });
+      });
+    }
+
+    async function applyWheelTemplate(key, doSync = true) {
+      const t = WHEEL_TEMPLATES[key];
+      if (!t) return;
+      if ($("mWheelCount")) $("mWheelCount").value = t.count;
+      if ($("mWheelLayout")) $("mWheelLayout").value = t.layout;
+      if ($("mTireType")) $("mTireType").value = t.tire;
+      if ($("mLocoMode")) $("mLocoMode").value = t.loco;
+      if ($("mDrive")) $("mDrive").value = t.drive;
+      if ($("mWheelR")) $("mWheelR").value = t.wr;
+      if ($("mRearWheelR")) $("mRearWheelR").value = t.rr;
+      if ($("mWheelW")) $("mWheelW").value = t.ww;
+      if ($("mWheelTrack")) $("mWheelTrack").value = t.trk;
+      if ($("mWheelBase")) $("mWheelBase").value = t.wb;
+      if ($("mFwdGain")) $("mFwdGain").value = t.fwd;
+      if ($("mStrafeGain")) $("mStrafeGain").value = t.strafe;
+      if ($("mOmegaGain")) $("mOmegaGain").value = t.omg;
+      if ($("mSteerDeg")) $("mSteerDeg").value = t.steer;
+      if ($("mTractionGain")) $("mTractionGain").value = t.trac;
+      state.customWheels = generateWheelLayout(t.layout, t.count, {
+        frontR: t.wr, rearR: t.rr, width: t.ww, track: t.trk, wheelbase: t.wb, tireType: t.tire, locoMode: t.loco,
+      });
+      renderWheelList();
+      if (doSync) await syncModulesToRust();
+    }
+
+    async function resetFromZeroScratch() {
+      if ($("mWheelTemplate")) $("mWheelTemplate").value = "blank_zero";
+      if ($("mWheelCount")) $("mWheelCount").value = 0;
+      if ($("mWheelLayout")) $("mWheelLayout").value = "manual_free";
+      if ($("mLocoMode")) $("mLocoMode").value = "custom_vector";
+      if ($("mStrafeGain")) $("mStrafeGain").value = 0.0;
+      if ($("mDeviceKind")) $("mDeviceKind").value = "none";
+      if ($("mRearMod")) $("mRearMod").value = "none";
+      if ($("mLwD")) $("mLwD").value = 0;
+      if ($("mRwD")) $("mRwD").value = 0;
+      state.customWheels = [];
+      state.robot.v = 0; state.robot.vLat = 0; state.robot.omega = 0; state.robot.pitch = 0;
+      renderWheelList();
+      await syncModulesToRust();
+      log("🧹 已清空为从 0 开始裸底盘车架，请按需自由新增轮胎、行走运动学、收集器或 CAD 零件");
+    }
+
+    function hexToRgb01(hex, fb = [0.18, 0.65, 0.52, 1]) {
+      const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim());
+      if (!m) return fb;
+      const n = parseInt(m[1], 16);
+      return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1];
+    }
+
+    function log(msg) {
+      const box = $("eventLog");
+      const d = document.createElement("div");
+      d.textContent = `[${state.time.toFixed(1)}s] ${msg}`;
+      box.prepend(d);
+      while (box.children.length > 30) box.removeChild(box.lastChild);
+      if (/^(🏆|✅|❌|⚠️|🔒|📋|🖨️|⚡|🚩|📄|💾)/u.test(String(msg))) showToast(msg);
+    }
+
+    function showToast(msg, ms = 2600) {
+      let wrap = $("toastWrap");
+      if (!wrap) {
+        wrap = document.createElement("div");
+        wrap.id = "toastWrap";
+        document.body.appendChild(wrap);
+      }
+      const t = document.createElement("div");
+      t.className = "toast";
+      const kind = /^(❌|⚠️|🔒|🚩)/u.test(msg) ? "warn" : (/^🏆/u.test(msg) ? "gold" : "ok");
+      t.dataset.kind = kind;
+      t.textContent = String(msg).replace(/\s*\[[^\]]+\]\s*/, " ").trim();
+      wrap.appendChild(t);
+      while (wrap.children.length > 4) wrap.removeChild(wrap.firstChild);
+      requestAnimationFrame(() => t.classList.add("show"));
+      setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 320); }, ms);
+    }
+
+    function loadMatchHistory() {
+      try { return JSON.parse(localStorage.getItem("xq_match_history") || "[]"); } catch (_) { return []; }
+    }
+    function saveMatchRecord(rec) {
+      const hist = loadMatchHistory();
+      hist.unshift(rec);
+      localStorage.setItem("xq_match_history", JSON.stringify(hist.slice(0, 30)));
+      renderMatchHistory();
+    }
+    function renderMatchHistory() {
+      const box = $("matchHistory");
+      if (!box) return;
+      const hist = loadMatchHistory();
+      if (!hist.length) { box.innerHTML = `<div class="list-item"><span>暂无比赛记录 · 完成一场官方赛后自动入榜</span></div>`; return; }
+      const best = Math.max(...hist.map((h) => h.net));
+      const sorted = [...hist].sort((a, b) => b.net - a.net || a.time - b.time);
+      box.innerHTML = sorted.slice(0, 10).map((h, i) => `
+        <div class="list-item">
+          <span><b style="color:${i === 0 ? "var(--gold)" : "var(--muted)"};">#${i + 1}</b> 净分 <b>${h.net}</b>
+            <small>红+${h.red} · 误推${h.wrong}枚 · 罚时+${h.pen}s · ${h.time.toFixed(1)}s · ${h.mode} · ${h.board} · ${h.date}</small></span>
+          ${h.net === best ? `<span class="pill ok">最佳</span>` : ""}
+        </div>`).join("");
+    }
+
+    function initPieces() {
+      state.pieces = [];
+      const layout = $("mLayoutMode")?.value || "grid";
+      const redChars = ["帅","仕","仕","相","相","车","车","马","马","炮","炮","兵","兵","兵","兵","兵"];
+      const blkChars = ["将","士","士","象","象","车","车","马","马","炮","炮","卒","卒","卒","卒","卒"];
+      for (let i = 0; i < 32; i++) {
+        const isRed = i < 16;
+        let x, z;
+        if (layout === "scatter") {
+          const s1 = Math.sin((i + 1) * 12.9898) * 43758.5453;
+          const s2 = Math.sin((i + 37) * 78.233) * 43758.5453;
+          x = 0.72 + (s1 - Math.floor(s1)) * 1.56;
+          z = 0.24 + (s2 - Math.floor(s2)) * 1.52;
+        } else if (layout === "ring") {
+          const ring = i < 16 ? 0.34 : 0.52;
+          const ang = ((i % 16) / 16) * Math.PI * 2;
+          x = 1.50 + Math.cos(ang) * ring;
+          z = 1.00 + Math.sin(ang) * ring;
+        } else if (layout === "corridor") {
+          const col = i % 8, row = Math.floor(i / 8);
+          x = 0.85 + col * 0.185;
+          z = 0.55 + row * 0.28 + (col % 2) * 0.06;
+        } else {
+          const col = i % 6, row = Math.floor(i / 6);
+          x = 1.25 + col * 0.11 + ((i % 2) - 0.5) * 0.02;
+          z = 0.70 + row * 0.12;
+        }
+        state.pieces.push({
+          id: i, isRed, label: isRed ? redChars[i] : blkChars[i - 16],
+          value: isRed ? (i === 0 ? 5 : 2) : 0,
+          x, z, vx: 0, vz: 0, scored: false, held: false
+        });
+      }
+      state.robot = { x: 0.42, z: 1.0, yaw: 0.0, v: 0, vLat: 0, omega: 0, wheelSpin: 0, mechPhase: 0, steerAngle: 0, pitch: 0 };
+      state.enemy = { x: 2.58, z: 1.0, yaw: Math.PI, v: 0, omega: 0, wheelSpin: 0 };
+      state.chaseCam = { x: 0.10, z: 1.0, yaw: 0.0 };
+      state.time = 0;
+      state.memory = [];
+      if (state.wasmReady) syncWasmWorld(true);
+    }
+
+    // =====================================================
+    // 轻量真 3D WebGL 引擎 (双视口共享几何构造 + 象棋汉字贴图)
+    // =====================================================
+    const M4 = {
+      ident() { return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); },
+      mul(a, b) {
+        const o = new Float32Array(16);
+        for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+          o[c*4+r] = a[r]*b[c*4] + a[4+r]*b[c*4+1] + a[8+r]*b[c*4+2] + a[12+r]*b[c*4+3];
+        }
+        return o;
+      },
+      persp(fovRad, aspect, near, far) {
+        const f = 1 / Math.tan(fovRad * 0.5), nf = 1 / (near - far);
+        return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+      },
+      lookAt(ex, ey, ez, tx, ty, tz, ux, uy, uz) {
+        let zx = ex - tx, zy = ey - ty, zz = ez - tz;
+        let zl = Math.hypot(zx, zy, zz) || 1; zx /= zl; zy /= zl; zz /= zl;
+        let xx = uy*zz - uz*zy, xy = uz*zx - ux*zz, xz = ux*zy - uy*zx;
+        let xl = Math.hypot(xx, xy, xz) || 1; xx /= xl; xy /= xl; xz /= xl;
+        const yx = zy*xz - zz*xy, yy = zz*xx - zx*xz, yz = zx*xy - zy*xx;
+        return new Float32Array([
+          xx, yx, zx, 0,
+          xy, yy, zy, 0,
+          xz, yz, zz, 0,
+          -(xx*ex+xy*ey+xz*ez), -(yx*ex+yy*ey+yz*ez), -(zx*ex+zy*ey+zz*ez), 1
+        ]);
+      },
+      trs(x, y, z, ry, sx, sy, sz) {
+        const c = Math.cos(ry), s = Math.sin(ry);
+        return new Float32Array([
+          c*sx, 0, -s*sx, 0,
+          0, sy, 0, 0,
+          s*sz, 0, c*sz, 0,
+          x, y, z, 1
+        ]);
+      },
+      trsZ(x, y, z, rz, sx, sy, sz) {
+        const c = Math.cos(rz), s = Math.sin(rz);
+        return new Float32Array([
+          c*sx, s*sx, 0, 0,
+          -s*sy, c*sy, 0, 0,
+          0, 0, sz, 0,
+          x, y, z, 1
+        ]);
+      },
+    };
+
+    function createRenderer(canvas) {
+      const gl = canvas.getContext("webgl", { antialias: true, preserveDrawingBuffer: false });
+      if (!gl) return null;
+      const vs = `
+        attribute vec3 aPos;
+        attribute vec3 aNorm;
+        attribute vec2 aUv;
+        uniform mat4 uVP;
+        uniform mat4 uModel;
+        varying vec3 vNorm;
+        varying vec3 vWorldPos;
+        varying vec2 vUv;
+        void main() {
+          vec4 wp = uModel * vec4(aPos, 1.0);
+          gl_Position = uVP * wp;
+          vWorldPos = wp.xyz;
+          vNorm = mat3(uModel) * aNorm;
+          vUv = aUv;
+        }
+      `;
+      const fs = `
+        precision mediump float;
+        uniform vec4 uColor;
+        uniform sampler2D uTex;
+        uniform float uUseTex;
+        uniform vec3 uEyePos;
+        varying vec3 vNorm;
+        varying vec3 vWorldPos;
+        varying vec2 vUv;
+        void main() {
+          vec3 n = normalize(vNorm);
+          vec3 sunDir = normalize(vec3(0.45, 0.85, 0.35));
+          float diff = max(dot(n, sunDir), 0.0);
+          float hemi = 0.5 + 0.5 * n.y;
+          vec3 viewDir = normalize(uEyePos - vWorldPos);
+          vec3 halfDir = normalize(sunDir + viewDir);
+          float spec = pow(max(dot(n, halfDir), 0.0), 32.0) * 0.22;
+          vec3 light = mix(vec3(0.28, 0.34, 0.36), vec3(0.54, 0.58, 0.56), hemi) + vec3(0.68) * diff + vec3(spec);
+          vec4 base = uUseTex > 0.5 ? texture2D(uTex, vUv) : uColor;
+          float distFog = clamp((length(uEyePos - vWorldPos) - 2.5) / 8.0, 0.0, 0.35);
+          vec3 lit = mix(base.rgb * light, vec3(0.11, 0.19, 0.22), distFog);
+          gl_FragColor = vec4(lit, base.a);
+        }
+      `;
+      function comp(type, src) {
+        const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s;
+      }
+      const prog = gl.createProgram();
+      gl.attachShader(prog, comp(gl.VERTEX_SHADER, vs));
+      gl.attachShader(prog, comp(gl.FRAGMENT_SHADER, fs));
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+
+      const loc = {
+        aPos: gl.getAttribLocation(prog, "aPos"),
+        aNorm: gl.getAttribLocation(prog, "aNorm"),
+        aUv: gl.getAttribLocation(prog, "aUv"),
+        uVP: gl.getUniformLocation(prog, "uVP"),
+        uModel: gl.getUniformLocation(prog, "uModel"),
+        uColor: gl.getUniformLocation(prog, "uColor"),
+        uTex: gl.getUniformLocation(prog, "uTex"),
+        uUseTex: gl.getUniformLocation(prog, "uUseTex"),
+        uEyePos: gl.getUniformLocation(prog, "uEyePos"),
+      };
+      gl.enableVertexAttribArray(loc.aPos);
+      gl.enableVertexAttribArray(loc.aNorm);
+      gl.enableVertexAttribArray(loc.aUv);
+      gl.enable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+      function makeMesh(verts) {
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+        return { buf, count: verts.length / 8 };
+      }
+
+      // 单位立方体 [-0.5..0.5]
+      const boxVerts = [];
+      const faces = [
+        [[0,0,1], [-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5], [-.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]],
+        [[0,0,-1],[.5,-.5,-.5],[-.5,-.5,-.5],[-.5,.5,-.5],[.5,-.5,-.5],[-.5,.5,-.5],[.5,.5,-.5]],
+        [[0,1,0], [-.5,.5,.5],[.5,.5,.5],[.5,.5,-.5], [-.5,.5,.5],[.5,.5,-.5],[-.5,.5,-.5]],
+        [[0,-1,0],[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,.5]],
+        [[1,0,0], [.5,-.5,.5],[.5,-.5,-.5],[.5,.5,-.5], [.5,-.5,.5],[.5,.5,-.5],[.5,.5,.5]],
+        [[-1,0,0],[-.5,-.5,-.5],[-.5,-.5,.5],[-.5,.5,.5], [-.5,-.5,-.5],[-.5,.5,.5],[-.5,.5,-.5]],
+      ];
+      for (const f of faces) {
+        const n = f[0];
+        const uvs = [[0,0],[1,0],[1,1],[0,0],[1,1],[0,1]];
+        for (let i = 1; i <= 6; i++) boxVerts.push(f[i][0], f[i][1], f[i][2], n[0], n[1], n[2], uvs[i-1][0], uvs[i-1][1]);
+      }
+      const boxMesh = makeMesh(boxVerts);
+
+      // 程序化生成国赛 3000x2000mm 3D 场地网格纹理
+      const floorCanvas = document.createElement("canvas");
+      floorCanvas.width = 1024; floorCanvas.height = 682;
+      const fc2 = floorCanvas.getContext("2d");
+      fc2.fillStyle = "#c8dfd5"; fc2.fillRect(0, 0, 1024, 682);
+      fc2.strokeStyle = "rgba(22, 56, 48, 0.14)"; fc2.lineWidth = 2;
+      for (let i = 0; i <= 12; i++) {
+        const x = (i / 12) * 1024;
+        fc2.beginPath(); fc2.moveTo(x, 0); fc2.lineTo(x, 682); fc2.stroke();
+      }
+      for (let j = 0; j <= 8; j++) {
+        const y = (j / 8) * 682;
+        fc2.beginPath(); fc2.moveTo(0, y); fc2.lineTo(1024, y); fc2.stroke();
+      }
+      // 中央 600x600mm 摆棋区黄框
+      fc2.strokeStyle = "rgba(218, 152, 32, 0.72)"; fc2.lineWidth = 4;
+      fc2.strokeRect(1024 * 0.40, 682 * 0.35, 1024 * 0.20, 682 * 0.30);
+      const floorTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, floorTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, floorCanvas);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+      // 单位圆柱 (侧壁 + 顶盖UV映射)
+      const cylSide = [], cylTop = [], segs = 20;
+      for (let i = 0; i < segs; i++) {
+        const a0 = (i / segs) * Math.PI * 2, a1 = ((i + 1) / segs) * Math.PI * 2;
+        const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+        cylSide.push(c0*.5,0,s0*.5,c0,0,s0,0,0, c1*.5,0,s1*.5,c1,0,s1,0,0, c1*.5,1,s1*.5,c1,0,s1,0,0);
+        cylSide.push(c0*.5,0,s0*.5,c0,0,s0,0,0, c1*.5,1,s1*.5,c1,0,s1,0,0, c0*.5,1,s0*.5,c0,0,s0,0,0);
+        cylTop.push(0,1,0, 0,1,0, 0.5,0.5);
+        cylTop.push(c0*.5,1,s0*.5, 0,1,0, 0.5+c0*0.48, 0.5+s0*0.48);
+        cylTop.push(c1*.5,1,s1*.5, 0,1,0, 0.5+c1*0.48, 0.5+s1*0.48);
+      }
+      const cylSideMesh = makeMesh(cylSide);
+      const cylTopMesh = makeMesh(cylTop);
+
+      // 沿 Z 轴的真 3D 圆柱车轮网格 (侧面轮胎 + 两侧端面，支持绕 Z 轴丝滑自转)
+      const wheelVerts = [], wSegs = 20;
+      for (let i = 0; i < wSegs; i++) {
+        const a0 = (i / wSegs) * Math.PI * 2, a1 = ((i + 1) / wSegs) * Math.PI * 2;
+        const c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+        wheelVerts.push(c0*.5,s0*.5,-.5,c0,s0,0,0,0, c1*.5,s1*.5,-.5,c1,s1,0,0,0, c1*.5,s1*.5,.5,c1,s1,0,0,0);
+        wheelVerts.push(c0*.5,s0*.5,-.5,c0,s0,0,0,0, c1*.5,s1*.5,.5,c1,s1,0,0,0, c0*.5,s0*.5,.5,c0,s0,0,0,0);
+        wheelVerts.push(0,0,.5, 0,0,1, 0,0, c0*.5,s0*.5,.5, 0,0,1, 0,0, c1*.5,s1*.5,.5, 0,0,1, 0,0);
+        wheelVerts.push(0,0,-.5, 0,0,-1, 0,0, c1*.5,s1*.5,-.5, 0,0,-1, 0,0, c0*.5,s0*.5,-.5, 0,0,-1, 0,0);
+      }
+      const wheelCylMesh = makeMesh(wheelVerts);
+
+      // 为每个象棋汉字生成独立微纹理 (黑底+红/白环+汉字)
+      const labelTextures = {};
+      function getLabelTex(label, isRed) {
+        const key = `${isRed ? "R" : "B"}_${label}`;
+        if (labelTextures[key]) return labelTextures[key];
+        const cv = document.createElement("canvas");
+        cv.width = 128; cv.height = 128;
+        const c2 = cv.getContext("2d");
+        c2.fillStyle = "#161a1d"; c2.fillRect(0, 0, 128, 128);
+        c2.beginPath(); c2.arc(64, 64, 52, 0, Math.PI * 2);
+        c2.lineWidth = 5; c2.strokeStyle = isRed ? "#e35b66" : "#eef4f2"; c2.stroke();
+        c2.fillStyle = isRed ? "#ff5e6c" : "#ffffff";
+        c2.font = "bold 68px 'Microsoft YaHei', sans-serif";
+        c2.textAlign = "center"; c2.textBaseline = "middle";
+        c2.fillText(label, 64, 68);
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        labelTextures[key] = tex;
+        return tex;
+      }
+
+      const customMeshCache = new Map();
+      function getCustomMesh(part) {
+        const meshData = part.mesh;
+        if (!meshData?.vertices?.length || !meshData?.triangles?.length) return null;
+        if (customMeshCache.has(part.id)) return customMeshCache.get(part.id);
+        const v = [], verts = meshData.vertices;
+        for (const [i0, i1, i2] of meshData.triangles) {
+          const a = verts[i0], b = verts[i1], c = verts[i2];
+          if (!a || !b || !c) continue;
+          const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+          const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+          let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+          const nl = Math.hypot(nx, ny, nz) || 1;
+          nx /= nl; ny /= nl; nz /= nl;
+          for (const p of [a, b, c]) v.push(p[0], p[1], p[2], nx, ny, nz, 0, 0);
+        }
+        const m = makeMesh(v);
+        customMeshCache.set(part.id, m);
+        return m;
+      }
+
+      function drawMesh(mesh, model, color, tex = null) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buf);
+        gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 32, 0);
+        gl.vertexAttribPointer(loc.aNorm, 3, gl.FLOAT, false, 32, 12);
+        gl.vertexAttribPointer(loc.aUv, 2, gl.FLOAT, false, 32, 24);
+        gl.uniformMatrix4fv(loc.uModel, false, model);
+        gl.uniform4fv(loc.uColor, color);
+        if (tex) {
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.uniform1i(loc.uTex, 0);
+          gl.uniform1f(loc.uUseTex, 1.0);
+        } else {
+          gl.uniform1f(loc.uUseTex, 0.0);
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+      }
+
+      function renderScene(vp, eyePos, includeOwnChassis) {
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.clearColor(0.08, 0.16, 0.19, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.uniformMatrix4fv(loc.uVP, false, vp);
+        gl.uniform3fv(loc.uEyePos, eyePos);
+
+        // 3D 比赛场地地板 (带 250mm 网格纹理) + 球门立体柱 + 300mm 围挡
+        drawMesh(boxMesh, M4.trs(FIELD_W*0.5, -0.01, FIELD_D*0.5, 0, FIELD_W, 0.02, FIELD_D), [1, 1, 1, 1], floorTex);
+        drawMesh(boxMesh, M4.trs(0.30, 0.002, 1.0, 0, 0.50, 0.004, 0.70), [0.85, 0.30, 0.36, 0.85]);
+        drawMesh(boxMesh, M4.trs(2.70, 0.002, 1.0, 0, 0.50, 0.004, 0.70), [0.24, 0.48, 0.82, 0.85]);
+        for (const gz of [0.65, 1.35]) {
+          drawMesh(boxMesh, M4.trs(0.55, 0.06, gz, 0, 0.022, 0.12, 0.022), [0.90, 0.32, 0.38, 1]);
+          drawMesh(boxMesh, M4.trs(2.45, 0.06, gz, 0, 0.022, 0.12, 0.022), [0.26, 0.52, 0.88, 1]);
+        }
+        drawMesh(boxMesh, M4.trs(FIELD_W*0.5, 0.15, -0.015, 0, FIELD_W, 0.30, 0.03), [0.34, 0.42, 0.45, 1]);
+        drawMesh(boxMesh, M4.trs(FIELD_W*0.5, 0.15, FIELD_D+0.015, 0, FIELD_W, 0.30, 0.03), [0.34, 0.42, 0.45, 1]);
+        drawMesh(boxMesh, M4.trs(-0.015, 0.15, FIELD_D*0.5, 0, 0.03, 0.30, FIELD_D), [0.34, 0.42, 0.45, 1]);
+        drawMesh(boxMesh, M4.trs(FIELD_W+0.015, 0.15, FIELD_D*0.5, 0, 0.03, 0.30, FIELD_D), [0.34, 0.42, 0.45, 1]);
+
+        // 32 枚真实比例 3D 象棋 + 接触阴影
+        const devKindNow = $("mDeviceKind")?.value || "u_scoop";
+        for (const p of state.pieces) {
+          const py = p.held ? (devKindNow === "forklift" ? 0.055 : (devKindNow === "conveyor" ? 0.042 : (devKindNow === "mag_arm" ? 0.048 : 0.004))) : 0;
+          if (py < 0.01) {
+            drawMesh(cylSideMesh, M4.trs(p.x + 0.005, 0.001, p.z + 0.005, 0, PIECE_R * 2.15, 0.001, PIECE_R * 2.15), [0.05, 0.10, 0.09, 0.28]);
+          }
+          const m = M4.trs(p.x, py, p.z, 0, PIECE_R * 2, PIECE_H, PIECE_R * 2);
+          drawMesh(cylSideMesh, m, [0.10, 0.12, 0.14, 1]);
+          drawMesh(cylTopMesh, m, [1, 1, 1, 1], getLabelTex(p.label, p.isRed));
+        }
+
+        // 完整多部件 3D 机器人总装建模 (5底盘 × 5行走机构 × 5涂装 × 8收集装置)
+        const r = state.robot;
+        const cw = (Number($("mChassisW").value) || 215) / 1000;
+        const cl = (Number($("mChassisL").value) || 235) / 1000;
+        const gc = Math.max(0.005, (Number($("mGroundClear")?.value) || 18) / 1000);
+        const wr = (Number($("mWheelR").value) || 30) / 1000;
+        const sw = (Number($("mScoopW").value) || 180) / 1000;
+        const mountY = Math.max(0, (Number($("mMountY")?.value) || 2) / 1000);
+        const lwD = (Number($("mLwD").value) || 20) / 1000;
+        const lwS = ((Number($("mLwS").value) || 10) * Math.PI) / 180;
+        const rwD = (Number($("mRwD").value) || 20) / 1000;
+        const rwS = ((Number($("mRwS").value) || 10) * Math.PI) / 180;
+        const camH = (Number($("mCamH").value) || 185) / 1000;
+        const frameStyle = $("mChassisStyle")?.value || "dual_deck";
+        const driveType = $("mDrive")?.value || "mecanum";
+        const theme = $("mThemeColor")?.value || "carbon";
+        const palCustom = hexToRgb01($("mCustomHex")?.value, [0.55, 0.27, 0.68, 1]);
+        const PALETTES = {
+          carbon:   { primary: [0.11, 0.17, 0.20, 1], secondary: [0.16, 0.24, 0.28, 1], accent: [0.10, 0.62, 0.52, 1] },
+          titanium: { primary: [0.56, 0.62, 0.66, 1], secondary: [0.72, 0.77, 0.80, 1], accent: [0.16, 0.58, 0.82, 1] },
+          rescue:   { primary: [0.85, 0.38, 0.12, 1], secondary: [0.18, 0.20, 0.22, 1], accent: [0.96, 0.76, 0.18, 1] },
+          cobalt:   { primary: [0.14, 0.30, 0.62, 1], secondary: [0.22, 0.44, 0.78, 1], accent: [0.25, 0.88, 0.80, 1] },
+          olive:    { primary: [0.24, 0.33, 0.22, 1], secondary: [0.34, 0.42, 0.30, 1], accent: [0.85, 0.64, 0.20, 1] },
+          custom:   { primary: palCustom, secondary: [palCustom[0]*0.65, palCustom[1]*0.65, palCustom[2]*0.65, 1], accent: [0.96, 0.76, 0.20, 1] },
+        };
+        const pal = PALETTES[theme] || PALETTES.carbon;
+        const deckY = gc + 0.014;
+        const topY = frameStyle === "low_rider" ? deckY + 0.036 : deckY + 0.064;
+        const locoModeNow = $("mLocoMode")?.value || "holonomic_strafe";
+        const pitchRad = locoModeNow === "self_balance_2w" ? (r.pitch || 0) : 0;
+        const rawBaseM = M4.trs(r.x, 0, r.z, -r.yaw, 1, 1, 1);
+        const baseM = Math.abs(pitchRad) > 1e-4 ? M4.mul(rawBaseM, M4.trsZ(0, 0, 0, pitchRad, 1, 1, 1)) : rawBaseM;
+
+        if (includeOwnChassis) {
+          // 车体底部投影
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(0.006, 0.002, 0.006, 0, cl*1.04, 0.002, cw*1.08)), [0.04, 0.09, 0.08, 0.25]);
+
+          // 5 种可选 3D 底盘结构模型
+          if (frameStyle === "truss_cage") {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, deckY, 0, 0, cl, 0.007, cw)), pal.primary);
+            for (const sx of [-cl*0.44, cl*0.44]) for (const sz of [-cw*0.44, cw*0.44]) {
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs(sx, (deckY+topY)*0.5, sz, 0, 0.012, topY-deckY, 0.012)), [0.76, 0.80, 0.82, 1]);
+            }
+            for (const sz of [-cw*0.44, cw*0.44]) drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, topY, sz, 0, cl*0.92, 0.010, 0.012)), pal.accent);
+            for (const sx of [-cl*0.44, cl*0.44]) drawMesh(boxMesh, M4.mul(baseM, M4.trs(sx, topY, 0, 0, 0.012, 0.010, cw*0.92)), pal.accent);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, topY, 0, 0.65, cl*0.95, 0.007, 0.012)), pal.secondary);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, topY, 0, -0.65, cl*0.95, 0.007, 0.012)), pal.secondary);
+          } else if (frameStyle === "armored_box") {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, (deckY+topY)*0.5, 0, 0, cl*1.02, topY-deckY+0.012, cw*0.96)), pal.primary);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.04, topY+0.006, 0, 0, cl*0.86, 0.010, cw*0.84)), pal.secondary);
+            for (const sz of [-cw*0.49, cw*0.49]) drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, deckY+0.014, sz, 0, cl*0.94, 0.022, 0.010)), pal.accent);
+          } else if (frameStyle === "hex_open") {
+            const rad = Math.min(cl, cw) * 0.96;
+            for (const ang of [0, Math.PI/3, -Math.PI/3]) {
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, deckY, 0, ang, rad, 0.009, rad*0.56)), pal.primary);
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, topY, 0, ang, rad*0.86, 0.007, rad*0.48)), pal.secondary);
+            }
+            for (let k = 0; k < 6; k++) {
+              const a = k * Math.PI / 3;
+              drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(Math.cos(a)*rad*0.40, deckY, Math.sin(a)*rad*0.40, 0, 0.009, topY-deckY, 0.009)), pal.accent);
+            }
+          } else if (frameStyle === "low_rider") {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, deckY, 0, 0, cl*1.08, 0.012, cw*1.02)), pal.primary);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.06, topY, 0, 0, cl*0.76, 0.008, cw*0.76)), pal.secondary);
+            // 赛车尾翼定风翼
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.48, topY+0.036, 0, 0, 0.032, 0.008, cw*0.96)), pal.accent);
+            for (const sz of [-cw*0.32, cw*0.32]) drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.46, topY+0.018, sz, 0, 0.012, 0.036, 0.008)), pal.secondary);
+          } else {
+            // dual_deck 双层碳纤骨架 + 4 黄铜铜柱
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, deckY, 0, 0, cl, 0.008, cw)), pal.primary);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0, topY, 0, 0, cl*0.92, 0.007, cw*0.92)), pal.secondary);
+            for (const sx of [-cl*0.38, cl*0.38]) for (const sz of [-cw*0.38, cw*0.38]) {
+              drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(sx, deckY+0.004, sz, 0, 0.010, topY-deckY-0.004, 0.010)), [0.85, 0.68, 0.24, 1]);
+            }
+          }
+
+          // 全自定义 0..N 颗 3D 车轮 / 悬挂摆臂 / 胎面花纹与履带包络
+          const drawSingleCustomWheel = (w) => {
+            const wx = Number(w.x_m) || 0;
+            const wz = Number(w.z_m) || 0;
+            const rad = Math.max(0.008, Number(w.radius_m) || 0.03);
+            const wThick = Math.max(0.008, Number(w.width_m) || 0.026);
+            const wy = rad;
+            const tType = w.tire_type || "mecanum";
+            const maxSteerRad = ((Number($("mSteerDeg")?.value) || 28) * Math.PI) / 180;
+            const dynamicSteer = w.steered ? Math.max(-maxSteerRad, Math.min(maxSteerRad, (r.steerAngle || 0) * (locoModeNow === "ackermann_4ws" && wx < -0.01 ? -0.8 : 1))) : 0;
+            const yawRad = ((Number(w.yaw_deg) || 0) * Math.PI) / 180 + dynamicSteer;
+            const spin = -r.wheelSpin * (0.03 / rad) * (w.driven ? 1.0 : 0.85);
+
+            // 悬挂连杆：无论用户在何处放置车轮，自动从车架边缘伸出金属臂固定轮毂，杜绝悬空
+            const anchorX = Math.max(-cl * 0.44, Math.min(cl * 0.44, wx));
+            const anchorZ = Math.max(-cw * 0.44, Math.min(cw * 0.44, wz));
+            const dxArm = wx - anchorX, dzArm = wz - anchorZ;
+            const armLen = Math.hypot(dxArm, dzArm);
+            if (armLen > 0.012) {
+              const armAng = -Math.atan2(dzArm, dxArm);
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs((anchorX + wx) * 0.5, (deckY + wy) * 0.5, (anchorZ + wz) * 0.5, armAng, armLen + 0.012, 0.008, 0.014)), [0.58, 0.64, 0.68, 1]);
+            }
+            if (Math.abs(wy - deckY) > 0.006) {
+              drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(wx * 0.92, Math.min(wy, deckY), wz * 0.88, 0, 0.010, Math.abs(wy - deckY) + 0.008, 0.010)), [0.75, 0.78, 0.82, 1]);
+            }
+
+            if (tType === "caster") {
+              drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(wx, wy + rad * 0.3, wz, 0, rad * 1.4, rad * 0.75, rad * 1.4)), [0.68, 0.73, 0.78, 1]);
+              drawMesh(wheelCylMesh, M4.mul(baseM, M4.mul(M4.trs(wx, wy, wz, yawRad, 1, 1, 1), M4.trsZ(0, 0, 0, spin, rad * 1.9, rad * 1.9, wThick))), [0.84, 0.88, 0.92, 1]);
+              return;
+            }
+
+            const wm = M4.mul(baseM, M4.trs(wx, wy, wz, yawRad, 1, 1, 1));
+            const hubCol = tType === "omni" ? [0.16, 0.80, 0.74, 1]
+              : (tType === "rubber" ? [0.88, 0.66, 0.22, 1]
+              : (tType === "offroad" ? [0.82, 0.42, 0.16, 1]
+              : (tType === "tracked" ? [0.56, 0.62, 0.66, 1]
+              : [0.74, 0.80, 0.84, 1])));
+            drawMesh(wheelCylMesh, M4.mul(wm, M4.trsZ(0, 0, 0, spin, rad * 2, rad * 2, wThick)), [0.08, 0.10, 0.12, 1]);
+            drawMesh(wheelCylMesh, M4.mul(wm, M4.trsZ(0, 0, wz >= 0 ? 0.002 : -0.002, spin, rad * 1.15, rad * 1.15, wThick * 0.98)), hubCol);
+            drawMesh(boxMesh, M4.mul(wm, M4.trsZ(0, 0, wz >= 0 ? wThick * 0.5 : -wThick * 0.5, spin, rad * 1.45, rad * 0.24, 0.005)), w.driven ? pal.accent : [0.45, 0.50, 0.55, 1]);
+
+            if (tType === "offroad") {
+              for (let k = 0; k < 6; k++) {
+                drawMesh(boxMesh, M4.mul(wm, M4.trsZ(0, 0, 0, spin + (k * Math.PI) / 6, rad * 2.16, rad * 0.22, wThick * 0.96)), [0.12, 0.14, 0.16, 1]);
+              }
+            } else if (tType === "mecanum") {
+              for (let k = 0; k < 4; k++) {
+                drawMesh(boxMesh, M4.mul(wm, M4.trsZ(0, 0, 0, spin + (k * Math.PI) / 4, rad * 2.08, rad * 0.16, wThick * 0.92)), [0.92, 0.58, 0.18, 1]);
+              }
+            } else if (tType === "omni") {
+              drawMesh(wheelCylMesh, M4.mul(wm, M4.trsZ(0, 0, wThick * 0.32, spin, rad * 2.06, rad * 2.06, wThick * 0.22)), [0.18, 0.86, 0.76, 1]);
+              drawMesh(wheelCylMesh, M4.mul(wm, M4.trsZ(0, 0, -wThick * 0.32, spin, rad * 2.06, rad * 2.06, wThick * 0.22)), [0.18, 0.86, 0.76, 1]);
+            }
+          };
+
+          const wheelList = state.customWheels || [];
+          const trackedWheels = wheelList.filter((w) => w.tire_type === "tracked" || $("mWheelLayout")?.value === "tracked");
+          if (trackedWheels.length >= 2) {
+            for (const sideSign of [-1, 1]) {
+              const sideWs = trackedWheels.filter((w) => (sideSign < 0 ? w.z_m < 0 : w.z_m >= 0));
+              if (sideWs.length) {
+                const minX = Math.min(...sideWs.map((w) => w.x_m - w.radius_m));
+                const maxX = Math.max(...sideWs.map((w) => w.x_m + w.radius_m));
+                const avgZ = sideWs.reduce((s, w) => s + w.z_m, 0) / sideWs.length;
+                const avgR = sideWs.reduce((s, w) => s + w.radius_m, 0) / sideWs.length;
+                const spanL = Math.max(0.08, maxX - minX);
+                drawMesh(boxMesh, M4.mul(baseM, M4.trs((minX + maxX) * 0.5, avgR, avgZ, 0, spanL, avgR * 1.9, 0.036)), [0.09, 0.10, 0.11, 0.9]);
+                const cleatShift = ((r.wheelSpin * avgR) % 0.045 + 0.045) % 0.045;
+                for (let cx = minX + cleatShift; cx <= maxX; cx += 0.045) {
+                  drawMesh(boxMesh, M4.mul(baseM, M4.trs(cx, avgR * 1.96, avgZ, 0, 0.010, 0.006, 0.040)), pal.accent);
+                }
+              }
+            }
+          }
+          for (const w of wheelList) {
+            drawSingleCustomWheel(w);
+          }
+
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.20, deckY+0.014, 0, 0, 0.055, 0.026, cw*0.72)), [0.46, 0.52, 0.56, 1]);
+          // K230 主控板 + 3S 电池 + 红色蘑菇头急停
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(-0.02, topY+0.012, -0.02, 0, 0.075, 0.014, 0.055)), [0.10, 0.45, 0.34, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(-0.02, topY+0.016, 0.045, 0, 0.082, 0.022, 0.036)), [0.18, 0.36, 0.72, 1]);
+          drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(-0.075, topY+0.004, -0.055, 0, 0.032, 0.024, 0.032)), [0.85, 0.16, 0.22, 1]);
+          // 相机桅杆 + 4 种传感光电套件 + 5 种后置辅助模块
+          const sensorSuite = $("mSensorSuite")?.value || "laser3";
+          const rearMod = $("mRearMod")?.value || "none";
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(0.045, camH*0.5, 0, 0, 0.016, camH, 0.016)), [0.72, 0.78, 0.80, 1]);
+          if (sensorSuite === "stereo_cam") {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0.055, camH, 0, 0, 0.032, 0.026, 0.095)), pal.accent);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0.075, camH-0.002, -0.028, 0, 0.014, 0.016, 0.018)), [0.05, 0.08, 0.12, 1]);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0.075, camH-0.002, 0.028, 0, 0.014, 0.016, 0.018)), [0.05, 0.08, 0.12, 1]);
+          } else {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0.055, camH, 0, 0, 0.034, 0.026, 0.048)), pal.accent);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(0.075, camH-0.004, 0, 0, 0.014, 0.016, 0.018)), [0.05, 0.08, 0.12, 1]);
+          }
+          if (sensorSuite === "lidar360") {
+            drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(0.0, topY+0.024, 0, r.mechPhase*0.6, 0.064, 0.032, 0.064)), [0.16, 0.22, 0.26, 1]);
+            drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(0.0, topY+0.056, 0, r.mechPhase*0.6, 0.048, 0.014, 0.048)), [0.14, 0.88, 0.62, 1]);
+            for (let k = 0; k < 8; k++) {
+              const a = (k / 8) * Math.PI * 2 + r.mechPhase * 0.25;
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs(Math.cos(a)*0.34, topY+0.048, Math.sin(a)*0.34, -a, 0.68, 0.0022, 0.0022)), [0.18, 0.96, 0.58, 0.45]);
+            }
+          } else {
+            const rays = sensorSuite === "omni_ir" ? [-0.52, -0.26, 0, 0.26, 0.52] : [-0.26, 0, 0.26];
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.44, topY+0.010, 0, 0, 0.022, 0.016, sensorSuite === "omni_ir" ? 0.092 : 0.042)), [0.18, 0.25, 0.28, 1]);
+            for (const rayAng of rays) {
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.46 + Math.cos(rayAng)*0.32, topY+0.008, Math.sin(rayAng)*0.32, -rayAng, 0.64, 0.0025, 0.0025)), [0.15, 0.95, 0.78, 0.55]);
+            }
+          }
+          // 后置/辅助硬件 3D 实体建模
+          if (rearMod === "storage_bin") {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.36, topY+0.036, 0, 0, 0.088, 0.058, cw*0.76)), [0.16, 0.58, 0.52, 0.82]);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.36, topY+0.068, 0, 0, 0.094, 0.008, cw*0.80)), [0.95, 0.76, 0.22, 1]);
+          } else if (rearMod === "counterweight") {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.44, deckY+0.024, 0, 0, 0.046, 0.036, cw*0.78)), [0.32, 0.35, 0.40, 1]);
+          } else if (rearMod === "turbo_fan") {
+            drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(-cl*0.44, topY+0.010, 0, 0, 0.072, 0.038, 0.072)), [0.20, 0.24, 0.28, 1]);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.44, topY+0.032, 0, r.mechPhase*2.2, 0.062, 0.008, 0.014)), [0.98, 0.42, 0.18, 1]);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.44, topY+0.032, 0, r.mechPhase*2.2 + Math.PI*0.5, 0.062, 0.008, 0.014)), [0.98, 0.42, 0.18, 1]);
+          } else if (rearMod === "dual_scoop") {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(-cl*0.54, mountY+0.024, 0, 0, 0.010, 0.042, sw*0.82)), [0.92, 0.66, 0.18, 1]);
+          }
+          // Rust 拉伸生成的自定义 3D CAD 零件 (支持自选颜色、偏移位置与安装偏航角)
+          for (const cp of state.customParts) {
+            const cm = getCustomMesh(cp);
+            if (cm) {
+              const pCol = hexToRgb01(cp.params?.color, [0.18, 0.65, 0.52, 1]);
+              const lp = cp.local_pos || [0, topY+0.009, 0];
+              const pYaw = ((cp.params?.yaw_deg || cp.rotation_deg?.[1] || 0) * Math.PI) / 180;
+              drawMesh(cm, M4.mul(baseM, M4.trs(lp[2] || 0, Math.max(0.01, lp[1] || topY+0.009), lp[0] || 0, pYaw, 1, 1, 1)), pCol);
+            }
+          }
+        }
+
+        // 11 种可选前端收集装置 3D 实体建模 (支持 none 从0裸车无收集器及离地高度 mountY)
+        const devKind = devKindNow;
+        const hasHeld = state.pieces.some((p) => p.held);
+        if (devKind === "none") {
+          // 从 0 空车架：不渲染任何前端预置收集机构
+        } else if (devKind === "roller") {
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.52, mountY+0.030, -sw*0.5, 0, 0.045, 0.052, 0.010)), [0.22, 0.28, 0.32, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.52, mountY+0.030, sw*0.5, 0, 0.045, 0.052, 0.010)), [0.22, 0.28, 0.32, 1]);
+          drawMesh(wheelCylMesh, M4.mul(baseM, M4.trsZ(cl*0.55, mountY+0.034, 0, r.mechPhase, 0.038, 0.038, sw*0.96)), [0.16, 0.72, 0.86, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trsZ(cl*0.55, mountY+0.034, 0, r.mechPhase, 0.044, 0.009, sw*0.94)), [0.95, 0.82, 0.25, 1]);
+        } else if (devKind === "funnel_gate") {
+          // 电动开合门笼斗：三面笼框 + 随持子状态自动降落锁定前门杆
+          const gateY = mountY + (hasHeld ? 0.022 : 0.068);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.50, mountY+0.032, 0, 0, 0.010, 0.054, sw)), [0.18, 0.62, 0.56, 1]);
+          for (const sz of [-sw*0.48, sw*0.48]) drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.56, mountY+0.032, sz, 0, 0.125, 0.054, 0.010)), [0.22, 0.74, 0.66, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.62, gateY, 0, 0, 0.012, 0.016, sw*0.98)), [0.96, 0.72, 0.16, 1]);
+        } else if (devKind === "pincer_claw") {
+          // 重型液压剪式钳：双交叉剪臂 + 液压油缸 + 宽口防滑钳尖
+          const openA = hasHeld ? 0.12 : (0.42 + Math.sin(r.mechPhase * 0.3) * 0.08);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.50, mountY+0.034, 0, 0, 0.036, 0.030, sw*0.78)), [0.85, 0.62, 0.16, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.58, mountY+0.028, -sw*0.40, openA, 0.135, 0.032, 0.016)), [0.24, 0.28, 0.32, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.58, mountY+0.028, sw*0.40, -openA, 0.135, 0.032, 0.016)), [0.24, 0.28, 0.32, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.64, mountY+0.026, -sw*0.28, -0.35, 0.042, 0.030, 0.014)), [0.94, 0.36, 0.20, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.64, mountY+0.026, sw*0.28, 0.35, 0.042, 0.030, 0.014)), [0.94, 0.36, 0.20, 1]);
+        } else if (devKind === "plow_v") {
+          // 高速 V 型破阵犁：锐角双斜铲板
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.56, mountY+0.030, -sw*0.24, 0.48, 0.012, 0.054, sw*0.62)), [0.92, 0.32, 0.22, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.56, mountY+0.030, sw*0.24, -0.48, 0.012, 0.054, sw*0.62)), [0.92, 0.32, 0.22, 1]);
+        } else if (devKind === "conveyor") {
+          // 斜坡传送带收子舱：左右护栏 + 倾斜皮带 + 动态向上爬行刮条
+          for (const sz of [-sw*0.46, sw*0.46]) drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.55, mountY+0.044, sz, 0, 0.145, 0.052, 0.010)), pal.secondary);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trsZ(cl*0.55, mountY+0.032, 0, -0.34, 0.140, 0.012, sw*0.86)), [0.14, 0.18, 0.20, 1]);
+          const beltOff = ((r.mechPhase * 0.012) % 0.032);
+          for (let k = -2; k <= 2; k++) {
+            const bx = k * 0.032 - beltOff;
+            drawMesh(boxMesh, M4.mul(baseM, M4.trsZ(cl*0.55 + bx, mountY+0.040 - bx*0.34, 0, -0.34, 0.008, 0.010, sw*0.82)), [0.96, 0.74, 0.18, 1]);
+          }
+        } else if (devKind === "forklift") {
+          // 电动双叉升降铲：双垂直导轨 + 随持子状态自动举升的双金属叉臂
+          const liftY = mountY + (hasHeld ? 0.046 : 0.010);
+          for (const sz of [-sw*0.34, sw*0.34]) {
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.49, 0.068, sz, 0, 0.014, 0.125, 0.014)), [0.24, 0.30, 0.34, 1]);
+            drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.56, liftY, sz*0.72, 0, 0.120, 0.008, 0.022)), [0.82, 0.86, 0.90, 1]);
+          }
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.50, liftY+0.016, 0, 0, 0.014, 0.032, sw*0.76)), [0.94, 0.62, 0.14, 1]);
+        } else if (devKind === "mag_arm") {
+          // 三自由度仿生机械臂：肩部转台 + 上臂 + 肘部 + 前臂 + 发光末端吸抓头
+          const reach = hasHeld ? 0.12 : (0.17 + Math.sin(r.mechPhase * 0.28) * 0.025);
+          const armH = hasHeld ? 0.095 : 0.068;
+          drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(cl*0.42, topY, 0, 0, 0.044, 0.024, 0.044)), [0.22, 0.28, 0.32, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trsZ(cl*0.46, topY+0.042, 0, 0.55, 0.085, 0.018, 0.022)), [0.92, 0.48, 0.18, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trsZ(cl*0.48 + reach*0.45, armH+0.032, 0, -0.58, 0.095, 0.015, 0.018)), [0.76, 0.82, 0.86, 1]);
+          drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(cl*0.46 + reach, mountY + (hasHeld ? 0.062 : 0.026), 0, 0, 0.046, 0.018, 0.046)), [0.12, 0.86, 0.72, 1]);
+        } else if (devKind === "gripper") {
+          const gripAng = hasHeld ? 0.14 : (0.34 + Math.sin(r.mechPhase * 0.35) * 0.08);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.49, mountY+0.034, 0, 0, 0.026, 0.026, sw*0.72)), [0.24, 0.30, 0.34, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.56, mountY+0.026, -sw*0.36, gripAng, 0.095, 0.030, 0.014)), [0.92, 0.42, 0.24, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.56, mountY+0.026, sw*0.36, -gripAng, 0.095, 0.030, 0.014)), [0.92, 0.42, 0.24, 1]);
+        } else if (devKind === "vacuum") {
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.53, mountY+0.040, 0, 0, 0.075, 0.036, sw*0.76)), [0.18, 0.68, 0.85, 0.55]);
+          drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(cl*0.53, mountY+0.058, 0, r.mechPhase, 0.062, 0.018, 0.062)), [0.92, 0.78, 0.24, 1]);
+        } else if (devKind === "brush") {
+          drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(cl*0.54, mountY+0.010, -sw*0.28, r.mechPhase, sw*0.48, 0.042, sw*0.48)), [0.88, 0.38, 0.52, 1]);
+          drawMesh(cylSideMesh, M4.mul(baseM, M4.trs(cl*0.54, mountY+0.010, sw*0.28, -r.mechPhase, sw*0.48, 0.042, sw*0.48)), [0.88, 0.38, 0.52, 1]);
+        } else {
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.52, mountY+0.028, 0, 0, 0.010, 0.048, sw)), [0.92, 0.66, 0.18, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.52 + lwD*0.45, mountY+0.026, -sw*0.5 - Math.sin(lwS)*lwD*0.4, lwS, lwD, 0.044, 0.008)), [0.95, 0.72, 0.25, 1]);
+          drawMesh(boxMesh, M4.mul(baseM, M4.trs(cl*0.52 + rwD*0.45, mountY+0.026, sw*0.5 + Math.sin(rwS)*rwD*0.4, -rwS, rwD, 0.044, 0.008)), [0.95, 0.72, 0.25, 1]);
+        }
+
+        // 红蓝双车对抗模式：渲染完整 3D 蓝色敌方 AI 赛车 (主视口与第一人称相机同步可见)
+        if ($("mMatchMode")?.value === "versus" && state.enemy) {
+          const e = state.enemy;
+          const eM = M4.trs(e.x, 0, e.z, -e.yaw, 1, 1, 1);
+          drawMesh(boxMesh, M4.mul(eM, M4.trs(0, 0.036, 0, 0, 0.22, 0.010, 0.20)), [0.14, 0.34, 0.68, 1]);
+          drawMesh(boxMesh, M4.mul(eM, M4.trs(0, 0.090, 0, 0, 0.19, 0.008, 0.18)), [0.22, 0.50, 0.88, 1]);
+          for (const sx of [-0.075, 0.075]) for (const sz of [-0.105, 0.105]) {
+            drawMesh(wheelCylMesh, M4.mul(eM, M4.trsZ(sx, 0.030, sz, -e.wheelSpin, 0.060, 0.060, 0.024)), [0.09, 0.11, 0.14, 1]);
+          }
+          drawMesh(boxMesh, M4.mul(eM, M4.trs(0.118, 0.028, 0, 0, 0.010, 0.046, 0.185)), [0.35, 0.78, 0.96, 1]);
+          drawMesh(boxMesh, M4.mul(eM, M4.trs(0.04, 0.145, 0, 0, 0.016, 0.11, 0.016)), [0.76, 0.82, 0.86, 1]);
+          drawMesh(boxMesh, M4.mul(eM, M4.trs(0.05, 0.195, 0, 0, 0.030, 0.024, 0.044)), [0.22, 0.62, 0.96, 1]);
+        }
+      }
+
+      return { renderScene };
+    }
+
+    const fieldGL = createRenderer($("fieldCanvas"));
+    const camGL = createRenderer($("camCanvas"));
+
+    function getVisiblePieces() {
+      const sensorSuite = $("mSensorSuite")?.value || "laser3";
+      const baseFov = (Number($("mCamFov").value) || 110) * Math.PI / 180;
+      const camFov = sensorSuite === "lidar360" ? Math.PI * 2 : (sensorSuite === "stereo_cam" ? Math.max(baseFov, 135 * Math.PI / 180) : baseFov);
+      const maxRange = sensorSuite === "lidar360" ? 2.60 : (sensorSuite === "stereo_cam" ? 2.20 : 1.85);
+      const out = [];
+      for (const p of state.pieces) {
+        if (p.scored || p.held || !p.isRed) continue;
+        const dx = p.x - state.robot.x, dz = p.z - state.robot.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist > maxRange) continue;
+        let ang = Math.atan2(dz, dx) - state.robot.yaw;
+        while (ang > Math.PI) ang -= Math.PI * 2;
+        while (ang < -Math.PI) ang += Math.PI * 2;
+        if (Math.abs(ang) <= camFov * 0.5) out.push({ ...p, dist, ang });
+      }
+      out.sort((a, b) => a.dist - b.dist);
+      if (out.length) state.memory = out.slice(0, 6);
+      return out;
+    }
+
+    const _utf8Enc = new TextEncoder();
+    function wasmWriteStr(str) {
+      const bytes = _utf8Enc.encode(str);
+      const ptr = state.wasm.wasm_alloc(bytes.length || 1);
+      new Uint8Array(state.wasm.memory.buffer, ptr, bytes.length).set(bytes);
+      return [ptr, bytes.length];
+    }
+
+    function getPhysicsEnvPayload() {
+      const preset = $("mPreset")?.value || "standard";
+      const mu = Number($("mMu")?.value) || 0.78;
+      const base = preset === "slippery"
+        ? { friction: 0.32, restitution: 0.48, piece_mass_kg: 0.048 }
+        : (preset === "bouncy"
+          ? { friction: 0.78, restitution: 0.82, piece_mass_kg: 0.048 }
+          : (preset === "heavy"
+            ? { friction: 0.84, restitution: 0.35, piece_mass_kg: 0.080 }
+            : { friction: 0.78, restitution: 0.42, piece_mass_kg: 0.048 }));
+      base.friction = mu;
+      return base;
+    }
+
+    function readWasmOut() {
+      if (!state.wasmReady || !state.wasm) return;
+      const ptr = state.wasm.wasm_out_ptr();
+      if (!ptr) return;
+      const f = new Float64Array(state.wasm.memory.buffer, ptr, 246);
+      state.robot.x = f[0];
+      state.robot.z = f[1];
+      state.robot.yaw = f[2];
+      state.robot.v = f[3];
+      state.robot.vLat = f[4];
+      state.robot.omega = f[5];
+      state.robot.wheelSpin = f[6];
+      state.robot.steerAngle = f[7];
+      state.robot.pitch = f[8];
+      state.enemy.x = f[9];
+      state.enemy.z = f[10];
+      state.enemy.yaw = f[11];
+      state.enemy.v = f[12];
+      state.enemy.wheelSpin = f[13];
+      state.time = f[14];
+      state.wasmTele = {
+        tractionN: f[16],
+        slip: f[17],
+        driveN: f[18],
+        slipCount: Math.round(f[19]),
+        busV: f[240] || 11.1,
+        curA: f[241] || 0.4,
+        batPct: f[242] || 100.0,
+        wrongPieces: Math.round(f[243] || 0),
+        netScore: Math.round(f[244] || 0),
+      };
+      const count = Math.min(state.pieces.length, Math.round(f[20]));
+      for (let i = 0; i < count; i++) {
+        const base = 21 + i * 6;
+        const p = state.pieces[i];
+        p.x = f[base];
+        p.z = f[base + 1];
+        p.vx = f[base + 2];
+        p.vz = f[base + 3];
+        p.scored = f[base + 4] > 0.5;
+        p.held = f[base + 5] > 0.5;
+      }
+    }
+
+    function syncWasmWorld(reset = false) {
+      if (!state.wasmReady || !state.wasm || !state.resolved?.custom_wheels) return;
+      const bStr = JSON.stringify(state.resolved);
+      const eStr = JSON.stringify(getPhysicsEnvPayload());
+      const layout = $("mLayoutMode")?.value || "grid";
+      const versus = $("mMatchMode")?.value === "versus" ? 1 : 0;
+      const [bp, bl] = wasmWriteStr(bStr);
+      const [ep, el] = wasmWriteStr(eStr);
+      if (reset) {
+        const [lp, ll] = wasmWriteStr(layout);
+        state.wasm.wasm_init_world(bp, bl, ep, el, 42, lp, ll, versus);
+        state.wasm.wasm_free(lp, ll);
+      } else {
+        state.wasm.wasm_update_build(bp, bl, ep, el, versus);
+      }
+      state.wasm.wasm_free(bp, bl);
+      state.wasm.wasm_free(ep, el);
+      readWasmOut();
+    }
+
+    async function initWasmPhysics() {
+      try {
+        const res = await fetch("/xiangqi_wasm.wasm");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const bytes = await res.arrayBuffer();
+        const { instance } = await WebAssembly.instantiate(bytes, {});
+        state.wasm = instance.exports;
+        state.wasmReady = true;
+        if ($("wasmPill")) {
+          $("wasmPill").textContent = "⚡ Rust WASM 逐轮物理在线";
+          $("wasmPill").className = "pill ok";
+        }
+        if (state.resolved?.custom_wheels) syncWasmWorld(true);
+      } catch (_) {
+        state.wasmReady = false;
+        if ($("wasmPill")) $("wasmPill").textContent = "JS 兼容物理回退";
+      }
+    }
+
+    function stepPhysics(dt) {
+      const manualActive = state.keys.w || state.keys.s || state.keys.a || state.keys.d || state.keys.q || state.keys.e;
+      const rearMod = $("mRearMod")?.value || "none";
+      const ws = state.customWheels || [];
+      const drivenWs = ws.filter((w) => w.driven);
+      const locoMode = $("mLocoMode")?.value || "holonomic_strafe";
+      const fwdGain = Number($("mFwdGain")?.value) || 1.0;
+      const strafeGain = Number($("mStrafeGain")?.value) ?? 0.8;
+      const omegaGain = Number($("mOmegaGain")?.value) || 1.0;
+      const tractionGain = Number($("mTractionGain")?.value) || 1.0;
+      const hasDrive = drivenWs.length > 0 || rearMod === "turbo_fan";
+      const baseMaxSpd = state.resolved.max_speed ?? 1.0;
+      const maxSpd = hasDrive ? Math.max(0.05, (baseMaxSpd || 1.0) * (rearMod === "turbo_fan" ? 1.06 : 1.0)) : 0;
+      const devKind = $("mDeviceKind")?.value || "u_scoop";
+      const canStrafe = (locoMode === "holonomic_strafe" || locoMode === "ackermann_4ws" || locoMode === "custom_vector") && strafeGain > 0.05;
+      const baseHold = devKind === "none" ? 0 : ((devKind === "conveyor" || devKind === "funnel_gate") ? 4 : ((devKind === "roller" || devKind === "vacuum" || devKind === "pincer_claw") ? 3 : ((devKind === "gripper" || devKind === "forklift" || devKind === "mag_arm") ? 2 : 0)));
+      const maxHold = baseHold + (rearMod === "storage_bin" && baseHold > 0 ? 2 : 0);
+      const mountY = Math.max(0, (Number($("mMountY")?.value) || 2) / 1000);
+      const collectorHits = devKind !== "none" && mountY < PIECE_H + 0.001;
+      const captureReach = devKind === "mag_arm" ? 0.27 : ((devKind === "conveyor" || devKind === "pincer_claw" || devKind === "funnel_gate") ? 0.25 : 0.22);
+      let heldCount = state.pieces.filter((p) => p.held).length;
+      let cmd;
+      if (!hasDrive) {
+        cmd = { v: 0, vLat: 0, omega: 0 };
+      } else if (manualActive) {
+        cmd = {
+          v: ((state.keys.w ? 1 : 0) - (state.keys.s ? 1 : 0)) * maxSpd,
+          vLat: canStrafe ? ((state.keys.e ? 1 : 0) - (state.keys.q ? 1 : 0)) * maxSpd * strafeGain : 0,
+          omega: ((state.keys.d ? 1 : 0) - (state.keys.a ? 1 : 0)) * 3.0 * omegaGain,
+        };
+      } else {
+        const b = state.board;
+        const hz = Math.max(5, Math.min(200, Number($("boardHz")?.value) || b.hz || 50));
+        b.hz = hz;
+        b.accumDt += dt;
+        const period = 1.0 / hz;
+        if (b.accumDt >= period || b.ticks === 0) {
+          b.accumDt = b.accumDt % period;
+          b.ticks += 1;
+          const dSpin = (state.robot.wheelSpin || 0) - (b.lastWheelSpin || 0);
+          b.lastWheelSpin = state.robot.wheelSpin || 0;
+          const nW = Math.min(16, (state.customWheels || []).length);
+          const motorRpm = Number($("mRpm")?.value) || 260;
+          for (let wi = 0; wi < nW; wi++) {
+            const rps = b.outputMode === "pwm" ? ((b.pwms[wi] || 0) * motorRpm / 60) : (dSpin / (Math.PI * 2 * Math.max(0.004, period)));
+            b.wheelRPS[wi] = rps;
+            b.encoderTicks[wi] += rps * 1024 * period;
+          }
+          if (b.loopFn) {
+            try {
+              b.loopFn(getBoardApi());
+            } catch (e) {
+              boardSerialLog(`[运行时错误] ${e.message}`);
+              b.loopFn = null;
+            }
+          } else if (state.strategyFn) {
+            b.outputMode = "velocity";
+            const visible = getVisiblePieces();
+            const res = state.strategyFn({ robot: state.robot, visiblePieces: visible, memory: state.memory, heldCount, maxHold, devKind });
+            b.velCmd = { v: res?.v || 0, vLat: res?.vLat || 0, omega: res?.omega || 0 };
+          }
+          if (b.ticks % 4 === 1) updateBoardTeleHud();
+        }
+        if (b.outputMode === "pwm" && b.loopFn) {
+          // Average left/right wheel PWM as fallback estimate if WASM not loaded
+          const nW = Math.max(1, (state.customWheels || []).length);
+          let avg = 0;
+          for (let wi = 0; wi < nW; wi++) avg += (b.pwms[wi] || 0);
+          cmd = { v: (avg / nW) * maxSpd, vLat: 0, omega: ((b.pwms[0] || 0) - (b.pwms[1] || 0)) * 2.2 };
+        } else {
+          cmd = {
+            v: (b.velCmd.v || 0) * fwdGain,
+            vLat: (b.velCmd.vLat || 0) * strafeGain,
+            omega: (b.velCmd.omega || 0) * omegaGain,
+          };
+        }
+      }
+      if (hasDrive && locoMode === "ackermann_front" && manualActive) {
+        const steerSign = (state.keys.d ? 1 : 0) - (state.keys.a ? 1 : 0);
+        if (Math.abs(cmd.v) < 0.05 && steerSign !== 0) cmd.omega = steerSign * 0.9 * omegaGain;
+      }
+
+      if (state.wasmReady && state.wasm && state.resolved?.custom_wheels) {
+        if (!manualActive && hasDrive && state.board.outputMode === "pwm" && !state.board.legacyFn) {
+          const nW = Math.min(16, (state.customWheels || []).length);
+          for (let wi = 0; wi < nW; wi++) {
+            state.wasm.wasm_set_motor_pwm(wi, state.board.pwms[wi] || 0);
+          }
+          state.wasm.wasm_step_motors(dt, nW);
+        } else {
+          state.wasm.wasm_step(dt, 1, cmd?.v || 0, cmd?.vLat || 0, cmd?.omega || 0);
+        }
+        readWasmOut();
+        state.robot.mechPhase += dt * 12.0;
+        return;
+      }
+      const targetV = hasDrive ? Math.max(-maxSpd, Math.min(maxSpd, cmd?.v || 0)) : 0;
+      const targetLat = (hasDrive && canStrafe) ? Math.max(-maxSpd * Math.max(0.2, strafeGain), Math.min(maxSpd * Math.max(0.2, strafeGain), cmd?.vLat || 0)) : 0;
+      const targetW = hasDrive ? Math.max(-6.5, Math.min(6.5, cmd?.omega || 0)) : 0;
+
+      // 丝滑加速/横移/转向惯性插值 + 自定义多轮抓地力加成
+      const modGrip = (rearMod === "counterweight" || rearMod === "turbo_fan") ? 1.15 : 1.0;
+      const wheelTraction = drivenWs.length ? (0.72 + Math.min(10, drivenWs.length) * 0.07) : 0.35;
+      const gripFactor = Math.min(1.8, Math.max(0.30, (state.mu / 0.78) * modGrip * wheelTraction * tractionGain));
+      const alphaV = 1 - Math.exp(-9.5 * gripFactor * dt);
+      const alphaW = 1 - Math.exp(-12.0 * gripFactor * dt);
+      const prevV = state.robot.v;
+      state.robot.v += (targetV - state.robot.v) * alphaV;
+      state.robot.vLat += (targetLat - state.robot.vLat) * alphaV;
+      state.robot.omega += (targetW - state.robot.omega) * alphaW;
+      const targetSteerVis = locoMode === "ackermann_4ws" && Math.abs(state.robot.vLat) > 0.05
+        ? Math.atan2(state.robot.vLat, Math.max(0.15, Math.abs(state.robot.v)))
+        : (-state.robot.omega * 0.24);
+      state.robot.steerAngle += (targetSteerVis - (state.robot.steerAngle || 0)) * (1 - Math.exp(-14 * dt));
+      if (locoMode === "self_balance_2w") {
+        const accelV = (state.robot.v - prevV) / Math.max(0.004, dt);
+        const targetPitch = Math.max(-0.26, Math.min(0.26, -state.robot.v * 0.14 - accelV * 0.03));
+        state.robot.pitch += (targetPitch - (state.robot.pitch || 0)) * (1 - Math.exp(-10 * dt));
+      } else {
+        state.robot.pitch = 0;
+      }
+
+      state.robot.yaw += state.robot.omega * dt;
+      const fx = Math.cos(state.robot.yaw), fz = Math.sin(state.robot.yaw);
+      const rx = -fz, rz = fx;
+      state.robot.x = Math.max(0.14, Math.min(FIELD_W - 0.14, state.robot.x + (fx * state.robot.v + rx * state.robot.vLat) * dt));
+      state.robot.z = Math.max(0.14, Math.min(FIELD_D - 0.14, state.robot.z + (fz * state.robot.v + rz * state.robot.vLat) * dt));
+      const wr = drivenWs.length ? (drivenWs.reduce((s, w) => s + (w.radius_m || 0.03), 0) / drivenWs.length) : Math.max(0.01, (Number($("mWheelR")?.value) || 30) / 1000);
+      state.robot.wheelSpin += (state.robot.v * dt) / wr;
+      state.robot.mechPhase += dt * 12.0;
+
+      // 红蓝双车对抗模式：蓝色敌方 AI 3D 赛车自主抢白棋 + 车体碰撞分离
+      if ($("mMatchMode")?.value === "versus" && state.enemy) {
+        const e = state.enemy;
+        const blk = state.pieces.filter((p) => !p.isRed && p.x < 2.45).sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z))[0];
+        if (blk) {
+          const desired = Math.atan2(blk.z - e.z, blk.x - e.x);
+          let ediff = desired - e.yaw;
+          while (ediff > Math.PI) ediff -= Math.PI * 2;
+          while (ediff < -Math.PI) ediff += Math.PI * 2;
+          e.omega = Math.max(-3.0, Math.min(3.0, ediff * 2.8));
+          e.v += ((Math.abs(ediff) > 0.9 ? 0.18 : 0.78) - e.v) * (1 - Math.exp(-8 * dt));
+        } else {
+          e.v *= 0.94; e.omega = 1.2;
+        }
+        e.yaw += e.omega * dt;
+        e.x = Math.max(0.15, Math.min(FIELD_W - 0.15, e.x + Math.cos(e.yaw) * e.v * dt));
+        e.z = Math.max(0.15, Math.min(FIELD_D - 0.15, e.z + Math.sin(e.yaw) * e.v * dt));
+        e.wheelSpin += (e.v * dt) / 0.03;
+        const rdx = state.robot.x - e.x, rdz = state.robot.z - e.z;
+        const rd = Math.hypot(rdx, rdz);
+        if (rd < 0.27 && rd > 1e-4) {
+          const push = (0.27 - rd) * 0.5;
+          state.robot.x += (rdx / rd) * push; state.robot.z += (rdz / rd) * push;
+          e.x -= (rdx / rd) * push; e.z -= (rdz / rd) * push;
+        }
+      }
+
+      const inRedGoal = state.robot.x < GOAL.maxX + 0.08 && state.robot.z > GOAL.minZ && state.robot.z < GOAL.maxZ;
+      const damp = Math.exp(-3.2 * state.mu * dt);
+
+      for (const p of state.pieces) {
+        if (p.held) {
+          if (inRedGoal) {
+            p.held = false;
+            p.vx = fx * 0.45; p.vz = fz * 0.45;
+          } else {
+            const slotIdx = state.pieces.filter((q) => q.held && q.id < p.id).length;
+            const lat = ((slotIdx % 3) - 1) * 0.052;
+            const rowBack = Math.floor(slotIdx / 3) * 0.055;
+            p.x = state.robot.x + fx * (0.16 - rowBack) - fz * lat;
+            p.z = state.robot.z + fz * (0.16 - rowBack) + fx * lat;
+            p.vx = 0; p.vz = 0;
+            continue;
+          }
+        }
+        const dx = p.x - state.robot.x, dz = p.z - state.robot.z;
+        const dist = Math.hypot(dx, dz);
+        const fwdDot = dx * fx + dz * fz;
+        const latDot = Math.abs(-dx * fz + dz * fx);
+
+        // 主动收集机构吸附区 (滚筒 / 传送带 / 门笼斗 / 夹爪 / 剪式钳 / 吸盘 / 升降铲 / 机械臂；离地高 >= 17mm 时从底部穿过)
+        if (collectorHits && maxHold > 0 && heldCount < maxHold && !p.scored && !inRedGoal && fwdDot > 0.08 && fwdDot < captureReach && latDot < 0.12) {
+          if (devKind !== "u_scoop" && devKind !== "brush" && devKind !== "plow_v") {
+            p.held = true;
+            heldCount += 1;
+            continue;
+          }
+        }
+        // 后置双向收集铲：倒车时也能将后方棋子推向目标
+        if (rearMod === "dual_scoop" && fwdDot < -0.10 && fwdDot > -0.22 && latDot < 0.11) {
+          p.vx -= fx * 0.65; p.vz -= fz * 0.65;
+        }
+        // 红蓝对抗模式下蓝车推动白棋
+        if ($("mMatchMode")?.value === "versus" && state.enemy) {
+          const edx = p.x - state.enemy.x, edz = p.z - state.enemy.z;
+          const ed = Math.hypot(edx, edz);
+          if (ed < 0.145 + PIECE_R && ed > 1e-4) {
+            p.x += (edx / ed) * (0.145 + PIECE_R - ed); p.z += (edz / ed) * (0.145 + PIECE_R - ed);
+            p.vx += (edx / ed) * 0.7; p.vz += (edz / ed) * 0.7;
+          }
+        }
+
+        // 负压吸盘远程微弱吸力 / 毛刷向心聚拢力
+        if (devKind === "vacuum" && dist < 0.28 && fwdDot > 0.05) {
+          p.vx -= (dx / Math.max(0.05, dist)) * 1.4 * dt;
+          p.vz -= (dz / Math.max(0.05, dist)) * 1.4 * dt;
+        } else if (devKind === "brush" && dist < 0.24 && fwdDot > 0.06) {
+          const lx = -fz, lz = fx;
+          const side = (-dx * fz + dz * fx) > 0 ? -1 : 1;
+          p.vx += lx * side * 1.2 * dt;
+          p.vz += lz * side * 1.2 * dt;
+        }
+
+        const minD = 0.145 + PIECE_R;
+        if (dist < minD && dist > 1e-4) {
+          const nx = dx / dist, nz = dz / dist;
+          p.x += nx * (minD - dist); p.z += nz * (minD - dist);
+          p.vx += nx * (0.45 + Math.max(0, state.robot.v) * 0.65);
+          p.vz += nz * (0.45 + Math.max(0, state.robot.v) * 0.65);
+        }
+      }
+
+      // 棋子间相互弹性碰撞 (防止重叠，推动更自然丝滑)
+      for (let i = 0; i < state.pieces.length; i++) {
+        const a = state.pieces[i];
+        if (a.held) continue;
+        for (let j = i + 1; j < state.pieces.length; j++) {
+          const b = state.pieces[j];
+          if (b.held) continue;
+          const dx = b.x - a.x, dz = b.z - a.z;
+          const d = Math.hypot(dx, dz), minSep = PIECE_R * 2.02;
+          if (d < minSep && d > 1e-4) {
+            const nx = dx / d, nz = dz / d, pen = (minSep - d) * 0.5;
+            a.x -= nx * pen; a.z -= nz * pen;
+            b.x += nx * pen; b.z += nz * pen;
+            const rvx = b.vx - a.vx, rvz = b.vz - a.vz;
+            const vn = rvx * nx + rvz * nz;
+            if (vn < 0) {
+              const imp = vn * 0.72;
+              a.vx += imp * nx; a.vz += imp * nz;
+              b.vx -= imp * nx; b.vz -= imp * nz;
+            }
+          }
+        }
+      }
+
+      for (const p of state.pieces) {
+        if (p.held) continue;
+        p.x = Math.max(PIECE_R, Math.min(FIELD_W - PIECE_R, p.x + p.vx * dt));
+        p.z = Math.max(PIECE_R, Math.min(FIELD_D - PIECE_R, p.z + p.vz * dt));
+        p.vx *= damp; p.vz *= damp;
+        p.scored = p.isRed && p.x >= GOAL.minX && p.x <= GOAL.maxX && p.z >= GOAL.minZ && p.z <= GOAL.maxZ;
+      }
+      state.time += dt;
+    }
+
+    let lastTs = 0;
+    function loop(ts) {
+      const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0;
+      lastTs = ts;
+      const manualActive = state.keys.w || state.keys.s || state.keys.a || state.keys.d || state.keys.q || state.keys.e;
+      if ((state.running || manualActive) && dt > 0) {
+        const steps = Math.max(1, Math.ceil(dt * 120));
+        const subDt = dt / steps;
+        for (let s = 0; s < steps; s++) stepPhysics(subDt);
+      }
+
+      // 弹簧阻尼追尾镜头平滑追踪 + 围挡防穿墙限位 (游戏级丝滑跟拍)
+      const r = state.robot;
+      const camLerp = 1 - Math.exp(-7.5 * Math.max(0.016, dt));
+      const targetEx = Math.max(0.08, Math.min(FIELD_W - 0.08, r.x - Math.cos(r.yaw) * 0.62));
+      const targetEz = Math.max(0.08, Math.min(FIELD_D - 0.08, r.z - Math.sin(r.yaw) * 0.62));
+      state.chaseCam.x += (targetEx - state.chaseCam.x) * camLerp;
+      state.chaseCam.z += (targetEz - state.chaseCam.z) * camLerp;
+      let yawDiff = r.yaw - state.chaseCam.yaw;
+      while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+      while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+      state.chaseCam.yaw += yawDiff * camLerp;
+
+      const camH = (Number($("mCamH").value) || 185) / 1000;
+      const pitchRad = ((Number($("mCamP").value) || 22) * Math.PI) / 180;
+      const fovRad = ((Number($("mCamFov").value) || 110) * Math.PI) / 180;
+      const fpEyeX = r.x + Math.cos(r.yaw) * 0.03, fpEyeZ = r.z + Math.sin(r.yaw) * 0.03;
+      const fwd = Math.cos(pitchRad), down = -Math.sin(pitchRad);
+
+      // 主 3D 视口矩阵 (自由环绕3D / 丝滑追尾3D跟拍 / 第一人称全屏3D)
+      if (fieldGL) {
+        const fc = $("fieldCanvas");
+        let vp, eyePos, showOwn = true;
+        if (state.camFollowMode === "fps") {
+          eyePos = [fpEyeX, camH, fpEyeZ];
+          showOwn = false;
+          vp = M4.mul(
+            M4.persp(fovRad * 0.64, fc.width / fc.height, 0.02, 16),
+            M4.lookAt(fpEyeX, camH, fpEyeZ, fpEyeX + Math.cos(r.yaw) * fwd, camH + down, fpEyeZ + Math.sin(r.yaw) * fwd, 0, 1, 0)
+          );
+        } else if (state.camFollowMode === "chase") {
+          const tx = r.x + Math.cos(state.chaseCam.yaw) * 0.55, tz = r.z + Math.sin(state.chaseCam.yaw) * 0.55;
+          eyePos = [state.chaseCam.x, 0.42, state.chaseCam.z];
+          vp = M4.mul(M4.persp(54 * Math.PI / 180, fc.width / fc.height, 0.04, 20), M4.lookAt(state.chaseCam.x, 0.42, state.chaseCam.z, tx, 0.05, tz, 0, 1, 0));
+        } else {
+          const o = state.orbit;
+          const ex = o.tx + o.dist * Math.cos(o.pitch) * Math.sin(o.yaw);
+          const ey = o.dist * Math.sin(o.pitch);
+          const ez = o.tz + o.dist * Math.cos(o.pitch) * Math.cos(o.yaw);
+          eyePos = [ex, ey, ez];
+          vp = M4.mul(M4.persp(45 * Math.PI / 180, fc.width / fc.height, 0.05, 25), M4.lookAt(ex, ey, ez, o.tx, 0.02, o.tz, 0, 1, 0));
+        }
+        fieldGL.renderScene(vp, eyePos, showOwn);
+      }
+
+      // 第一人称真 3D 车载相机视口
+      if (camGL) {
+        const cc = $("camCanvas");
+        const vpCam = M4.mul(
+          M4.persp(fovRad * 0.68, cc.width / cc.height, 0.02, 12),
+          M4.lookAt(fpEyeX, camH, fpEyeZ, fpEyeX + Math.cos(r.yaw) * fwd, camH + down, fpEyeZ + Math.sin(r.yaw) * fwd, 0, 1, 0)
+        );
+        camGL.renderScene(vpCam, [fpEyeX, camH, fpEyeZ], false);
+      }
+
+      const redScore = state.pieces.filter((p) => p.scored && p.isRed).reduce((a, p) => a + p.value, 0);
+      const wrongCnt = state.pieces.filter((p) => !p.isRed && !p.held && p.x >= GOAL.minX && p.x <= GOAL.maxX && p.z >= GOAL.minZ && p.z <= GOAL.maxZ).length;
+      const penPts = wrongCnt * 3;
+      const netScore = redScore - penPts;
+      const heldNow = state.pieces.filter((p) => p.held).length;
+      const spdNow = Math.hypot(r.v, r.vLat || 0);
+      const effTime = state.time + (state.referee.penaltySec || 0);
+      const limitSec = state.referee.mode === "official_180" ? 180 : (state.referee.mode === "official_120" ? 120 : 0);
+      const remSec = limitSec > 0 ? Math.max(0, limitSec - effTime) : null;
+      if (state.running && limitSec > 0 && !state.referee.finished) {
+        if (remSec <= 0 || redScore >= 45) {
+          state.referee.finished = true;
+          state.running = false;
+          if ($("runBtn")) $("runBtn").textContent = "▶ 运行";
+          const reason = redScore >= 45 ? "全收红棋提前完赛!" : "比赛时间到!";
+          log(`🏆 [官方裁判] ${reason} 净得分 ${netScore} (红棋+${redScore}, 误推黑棋${wrongCnt}枚-${penPts}) · 有效用时 ${effTime.toFixed(1)}s`);
+          saveMatchRecord({
+            net: netScore, red: redScore, wrong: wrongCnt, pen: state.referee.penaltySec, time: effTime,
+            mode: state.referee.mode === "official_120" ? "冲刺赛" : "标准赛",
+            board: $("boardType")?.value || "K230_LINUX",
+            date: new Date().toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
+          });
+        }
+      }
+      $("tScore").textContent = wrongCnt > 0 ? `${netScore} (${redScore}-${penPts})` : `${netScore} / 45`;
+      $("tTime").textContent = remSec !== null ? `${heldNow}枚 · 余${remSec.toFixed(1)}s` : `${heldNow}枚 · ${effTime.toFixed(1)}s`;
+      if ($("refScoreboard")) {
+        const tag = state.referee.finished ? "【已完赛】" : (limitSec > 0 ? `剩余 ${remSec.toFixed(1)}s` : `自由模式 ${effTime.toFixed(1)}s`);
+        $("refScoreboard").textContent = `官方计分板: 净得分 ${netScore} (红棋 +${redScore} · 误推黑棋 ${wrongCnt}枚 -${penPts} · 复位罚时 +${state.referee.penaltySec}s) · ${tag}`;
+      }
+      if ($("fpHud")) {
+        const wt = state.wasmTele;
+        const extra = state.wasmReady ? ` · 轮力 ${wt.driveN.toFixed(1)}N · 滑移 ${(wt.slip * 100).toFixed(0)}% · ${(wt.busV ?? 11.1).toFixed(1)}V/${(wt.curA ?? 0.4).toFixed(1)}A` : "";
+        $("fpHud").textContent = `第一人称真 3D 机位 · 速度 ${spdNow.toFixed(2)} m/s · 携带 ${heldNow} 枚${extra}`;
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function boardSerialLog(...args) {
+      const box = $("serialMonitor");
+      if (!box) return;
+      const msg = args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ");
+      const line = document.createElement("div");
+      line.textContent = `[${(state.time * 1000).toFixed(0)}ms] ${msg}`;
+      box.appendChild(line);
+      while (box.children.length > 36) box.removeChild(box.firstChild);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function readLaserRay(rayIdx) {
+      const suite = $("mSensorSuite")?.value || "laser3";
+      const angles = suite === "omni_ir" ? [-0.52, -0.26, 0, 0.26, 0.52] : [-0.26, 0, 0.26];
+      const relAng = angles[Math.max(0, Math.min(angles.length - 1, rayIdx | 0))] || 0;
+      const ang = state.robot.yaw + relAng;
+      const dx = Math.cos(ang), dz = Math.sin(ang);
+      let minD = 2.5;
+      if (dx > 1e-4) minD = Math.min(minD, (FIELD_W - state.robot.x) / dx);
+      if (dx < -1e-4) minD = Math.min(minD, (0.0 - state.robot.x) / dx);
+      if (dz > 1e-4) minD = Math.min(minD, (FIELD_D - state.robot.z) / dz);
+      if (dz < -1e-4) minD = Math.min(minD, (0.0 - state.robot.z) / dz);
+      for (const p of state.pieces) {
+        if (p.held) continue;
+        const px = p.x - state.robot.x, pz = p.z - state.robot.z;
+        const proj = px * dx + pz * dz;
+        if (proj > 0.05 && proj < minD) {
+          const perp = Math.abs(-px * dz + pz * dx);
+          if (perp < PIECE_R + 0.015) minD = Math.min(minD, proj - PIECE_R);
+        }
+      }
+      return Math.max(0.02, minD);
+    }
+
+    function updateBoardTeleHud() {
+      const hud = $("boardTeleHud");
+      if (!hud) return;
+      const b = state.board;
+      const nW = Math.min(8, Math.max(1, (state.customWheels || []).length));
+      const pwmTxt = Array.from({ length: nW }, (_, i) => `M${i}:${Math.round((b.pwms[i] || 0) * 100)}%`).join(" ");
+      const busV = (state.wasmTele?.busV ?? 11.1).toFixed(2);
+      const curA = (state.wasmTele?.curA ?? 0.4).toFixed(1);
+      const modeTxt = b.outputMode === "pwm" ? "PWM直驱" : "速度闭环";
+      hud.textContent = `MCU: ${b.ticks} ticks (${b.hz}Hz) · 模式: ${modeTxt} · ${busV}V / ${curA}A · ${pwmTxt}`;
+    }
+
+    function getBoardApi() {
+      const b = state.board;
+      const api = {
+        hz: b.hz,
+        HIGH: 1, LOW: 0, INPUT: 0, OUTPUT: 1, INPUT_PULLUP: 2,
+        PI: Math.PI, TWO_PI: Math.PI * 2, HALF_PI: Math.PI / 2, LED_BUILTIN: 13,
+        millis: () => Math.round(state.time * 1000),
+        micros: () => Math.round(state.time * 1000000),
+        delay: () => {},
+        abs: Math.abs,
+        min: Math.min,
+        max: Math.max,
+        sq: (x) => x * x,
+        pow: Math.pow,
+        constrain: (x, lo, hi) => Math.max(lo, Math.min(hi, x)),
+        map: (x, inMin, inMax, outMin, outMax) => ((x - inMin) * (outMax - outMin)) / ((inMax - inMin) || 1) + outMin,
+        radians: (deg) => (deg * Math.PI) / 180,
+        degrees: (rad) => (rad * 180) / Math.PI,
+        log: (...a) => boardSerialLog(...a),
+        pinMode: (pin, mode) => { b.gpioModes[String(pin)] = mode; },
+        digitalWrite: (pin, val) => { b.gpioVals[String(pin)] = val ? 1 : 0; },
+        digitalRead: (pin) => b.gpioVals[String(pin)] ? 1 : 0,
+        analogRead: (pin) => {
+          const p = Number(pin) || 0;
+          if (p === 0 || p === 34) return Math.round(((state.wasmTele?.busV ?? 11.1) / 25.0) * 4095);
+          return Math.round(Math.min(1, readLaserRay(p % 3) / 2.5) * 4095);
+        },
+        mapMotorPin: (wheelIdx, pwmPin) => {
+          const wi = wheelIdx | 0;
+          if (wi >= 0 && wi < 16) b.motorPinMap[String(pwmPin)] = wi;
+        },
+        setVelocity: (v, omega, vLat = 0) => {
+          b.outputMode = "velocity";
+          b.velCmd = { v: Number(v) || 0, omega: Number(omega) || 0, vLat: Number(vLat) || 0 };
+        },
+        set_velocity: (v, omega, vLat = 0) => api.setVelocity(v, omega, vLat),
+        setMotorPWM: (idx, pwm) => {
+          b.outputMode = "pwm";
+          const i = idx | 0;
+          if (i >= 0 && i < 16) b.pwms[i] = Math.max(-1, Math.min(1, Number(pwm) || 0));
+        },
+        set_motor: (idx, pwm) => api.setMotorPWM(idx, pwm),
+        analogWrite: (pinOrWheel, val255) => {
+          const mapped = b.motorPinMap[String(pinOrWheel)];
+          const wi = mapped !== undefined ? mapped : (pinOrWheel | 0);
+          api.setMotorPWM(wi, (Number(val255) || 0) / 255);
+        },
+        setAllMotors: (arr) => {
+          b.outputMode = "pwm";
+          if (Array.isArray(arr)) arr.slice(0, 16).forEach((v, i) => { b.pwms[i] = Math.max(-1, Math.min(1, Number(v) || 0)); });
+        },
+        getWheelCount: () => (state.customWheels || []).length,
+        getWheelPos: (i) => state.customWheels?.[i] || null,
+        getEncoderTicks: (i = 0) => Math.round(b.encoderTicks[i | 0] || 0),
+        resetEncoders: () => { b.encoderTicks.fill(0); },
+        getWheelRPS: (i = 0) => Number((b.wheelRPS[i | 0] || 0).toFixed(3)),
+        getHeldCount: () => state.pieces.filter((p) => p.held).length,
+        getMaxHold: () => ({ none: 0, roller: 4, conveyor: 5, funnel_gate: 5, pincer_claw: 2, gripper: 2, mag_arm: 2, vacuum: 2, forklift: 2, u_scoop: 1, plow_v: 0, brush: 0 }[$("mDeviceKind")?.value || "u_scoop"] ?? 1),
+        getGoalPos: () => ({ x: 0.25, z: 1.0 }),
+        getTimeSec: () => state.time,
+        getIMU: () => ({
+          yaw: state.robot.yaw,
+          yawDeg: (state.robot.yaw * 180) / Math.PI,
+          omega: state.robot.omega,
+          vFwd: state.robot.v,
+          vLat: state.robot.vLat || 0,
+          pitchDeg: ((state.robot.pitch || 0) * 180) / Math.PI,
+          x: state.robot.x,
+          z: state.robot.z,
+        }),
+        imu: () => api.getIMU(),
+        getBatteryVoltage: () => state.wasmTele?.busV ?? 11.1,
+        getBatteryPct: () => state.wasmTele?.batPct ?? 100,
+        getTotalCurrent: () => state.wasmTele?.curA ?? 0.4,
+        readLaser: (rayIdx = 1) => readLaserRay(rayIdx),
+        read_laser: (rayIdx = 1) => readLaserRay(rayIdx),
+        camera_detect: () => getVisiblePieces(),
+        getCameraCount: () => getVisiblePieces().length,
+        getCameraObject: (i = 0) => getVisiblePieces()[i] || null,
+      };
+      api.Serial = {
+        begin: () => {},
+        println: (...a) => boardSerialLog(...a),
+        print: (...a) => boardSerialLog(...a),
+        printf: (fmt, ...args) => {
+          let idx = 0;
+          const out = String(fmt).replace(/%(?:\.(\d+))?[dfsu]/g, (_, prec) => {
+            const val = args[idx++];
+            if (prec !== undefined && typeof val === "number") return val.toFixed(Number(prec));
+            return String(val ?? "");
+          });
+          boardSerialLog(out);
+        },
+      };
+      return api;
+    }
+
+    function transpileArduinoC(src) {
+      const cTypes = "(?:float|double|int|long|bool|boolean|String|uint8_t|uint16_t|uint32_t|int8_t|int16_t|int32_t|size_t|byte|word|char|unsigned\\s+(?:int|long|char))";
+      let code = src
+        .replace(/^\s*#include\s+.*$/gm, "")
+        .replace(/^\s*#define\s+([A-Za-z_]\w*)\s+(.+)$/gm, "const $1 = $2;")
+        .replace(/\bvoid\s+(setup|loop)\s*\(\s*(?:void)?\s*\)/g, "function $1()")
+        .replace(new RegExp(`\\b(?:${cTypes}|void)\\s+([A-Za-z_]\\w*)\\s*\\(([^)]*)\\)\\s*\\{`, "g"), (_, fn, args) => {
+          const cleanArgs = args
+            .split(",")
+            .map((a) => a.trim().replace(new RegExp(`^(?:const\\s+)?${cTypes}\\s+`), ""))
+            .filter(Boolean)
+            .join(", ");
+          return `function ${fn}(${cleanArgs}) {`;
+        })
+        .replace(new RegExp(`\\bconst\\s+${cTypes}\\s+`, "g"), "const ")
+        .replace(new RegExp(`\\b(?:static\\s+)?(?:${cTypes}|auto)\\s+`, "g"), "let ")
+        .replace(/\bM_PI\b/g, "Math.PI")
+        .replace(/\bfabs\s*\(/g, "Math.abs(")
+        .replace(/\b(atan2|sin|cos|tan|sqrt|hypot|floor|ceil|round)\s*\(/g, "Math.$1(");
+      return code;
+    }
+
+    function transpileMicroPython(src) {
+      const lines = src.replace(/\r\n/g, "\n").split("\n");
+      const out = [];
+      const indents = [0];
+      const declared = new Set(["board", "setup", "loop"]);
+      const fixExpr = (e) => {
+        // Python f-strings: f"..." or f'...'
+        let s = e.replace(/\bf(["'])(.*?)\1/g, (_, _q, body) => {
+          const tpl = body.replace(/\{([^}:]+?)(?::\.(\d+)f)?\}/g, (__, expr, prec) =>
+            prec !== undefined ? `\${Number(${expr}).toFixed(${prec})}` : `\${${expr}}`
+          );
+          return "`" + tpl + "`";
+        });
+        s = s
+          .replace(/\bTrue\b/g, "true")
+          .replace(/\bFalse\b/g, "false")
+          .replace(/\bNone\b/g, "null")
+          .replace(/\band\b/g, "&&")
+          .replace(/\bor\b/g, "||")
+          .replace(/\bnot\s+/g, "!")
+          .replace(/\bmath\.pi\b/g, "Math.PI")
+          .replace(/\bmath\.degrees\s*\(/g, "degrees(")
+          .replace(/\bmath\.radians\s*\(/g, "radians(")
+          .replace(/\bmath\.(atan2|sin|cos|tan|sqrt|hypot|fabs|floor|ceil)\s*\(/g, (_, fn) => `Math.${fn === "fabs" ? "abs" : fn}(`)
+          .replace(/\btime\.ticks_ms\s*\(\s*\)/g, "millis()")
+          .replace(/\btime\.sleep_ms\s*\([^)]*\)/g, "delay(0)")
+          .replace(/\bround\s*\(\s*([^,)]+)\s*,\s*([^)]+)\)/g, "Number(($1).toFixed($2))")
+          .replace(/\bround\s*\(/g, "Math.round(")
+          .replace(/\blen\s*\(\s*([^)]+)\s*\)/g, "($1).length")
+          .replace(/\bprint\s*\(/g, "board.log(");
+        const tern = /^(.+?)\s+if\s+(.+?)\s+else\s+(.+)$/.exec(s);
+        if (tern && !s.startsWith("if ") && !s.startsWith("elif ")) {
+          return `(${tern[2]} ? ${tern[1]} : ${tern[3]})`;
+        }
+        return s;
+      };
+
+      for (const raw of lines) {
+        const noComment = raw.replace(/#.*$/, "");
+        if (!noComment.trim()) continue;
+        const trimmed = noComment.trim();
+        if (/^(?:import|from)\s+/.test(trimmed)) continue;
+        const indent = raw.search(/\S/);
+        while (indents.length > 1 && indent < indents[indents.length - 1]) {
+          indents.pop();
+          out.push(" ".repeat(indents[indents.length - 1]) + "}");
+        }
+        const pad = " ".repeat(indent);
+        let m;
+        if ((m = /^def\s+([A-Za-z_]\w*)\s*\(([^)]*)\)\s*:\s*$/.exec(trimmed))) {
+          out.push(`${pad}function ${m[1]}(${m[2]}) {`);
+          indents.push(indent + 2);
+        } else if ((m = /^if\s+(.+):\s*$/.exec(trimmed))) {
+          out.push(`${pad}if (${fixExpr(m[1])}) {`);
+          indents.push(indent + 2);
+        } else if ((m = /^elif\s+(.+):\s*$/.exec(trimmed))) {
+          out.push(`${pad}else if (${fixExpr(m[1])}) {`);
+          indents.push(indent + 2);
+        } else if (/^else\s*:\s*$/.test(trimmed)) {
+          out.push(`${pad}else {`);
+          indents.push(indent + 2);
+        } else if ((m = /^while\s+(.+):\s*$/.exec(trimmed))) {
+          out.push(`${pad}while (${fixExpr(m[1])}) {`);
+          indents.push(indent + 2);
+        } else if ((m = /^for\s+([A-Za-z_]\w*)\s+in\s+range\(([^,)]+)(?:,\s*([^)]+))?\)\s*:\s*$/.exec(trimmed))) {
+          const start = m[3] ? fixExpr(m[2]) : "0";
+          const end = m[3] ? fixExpr(m[3]) : fixExpr(m[2]);
+          out.push(`${pad}for (let ${m[1]} = ${start}; ${m[1]} < ${end}; ${m[1]}++) {`);
+          indents.push(indent + 2);
+        } else if ((m = /^for\s+([A-Za-z_]\w*)\s+in\s+(.+):\s*$/.exec(trimmed))) {
+          out.push(`${pad}for (const ${m[1]} of ${fixExpr(m[2])}) {`);
+          indents.push(indent + 2);
+        } else if ((m = /^([A-Za-z_]\w*)\s*=\s*(.+)$/.exec(trimmed)) && !/^(?:return|break|continue)\b/.test(trimmed)) {
+          const vname = m[1];
+          const expr = fixExpr(m[2]);
+          if (!declared.has(vname)) {
+            declared.add(vname);
+            out.push(`${pad}let ${vname} = ${expr};`);
+          } else {
+            out.push(`${pad}${vname} = ${expr};`);
+          }
+        } else {
+          out.push(`${pad}${fixExpr(trimmed)};`);
+        }
+      }
+      while (indents.length > 1) {
+        indents.pop();
+        out.push("}");
+      }
+      return out.join("\n");
+    }
+
+    function compileStrategy() {
+      const lang = $("codeLang")?.value || "arduino_c";
+      const bType = $("boardType")?.value || "K230_LINUX";
+      const hz = Math.max(5, Math.min(200, Number($("boardHz")?.value) || 50));
+      state.board.lang = lang;
+      state.board.type = bType;
+      state.board.hz = hz;
+      state.board.ticks = 0;
+      state.board.accumDt = 0;
+      state.board.pwms.fill(0);
+      state.board.outputMode = "velocity";
+      state.board.gpioModes = {};
+      state.board.gpioVals = {};
+      state.board.motorPinMap = {};
+      state.board.encoderTicks.fill(0);
+      state.board.wheelRPS.fill(0);
+      state.board.lastWheelSpin = state.robot.wheelSpin || 0;
+      updateBoardTeleHud();
+      const src = $("codeInput").value;
+      try {
+        // Legacy decide(ctx) fallback detection
+        if (/\bfunction\s+decide\s*\(/.test(src) && !/\b(?:void|function)\s+loop\b|\bdef\s+loop\b/.test(src)) {
+          state.strategyFn = new Function(`${src}; return decide;`)();
+          state.board.setupFn = null;
+          state.board.loopFn = null;
+          state.board.legacyFn = state.strategyFn;
+          if ($("boardStatus")) $("boardStatus").textContent = `✅ [${bType} @ ${hz}Hz] 已烧录兼容策略 decide(ctx)`;
+          log(`已编译兼容策略函数 (${bType} @ ${hz}Hz)`);
+          return;
+        }
+        const jsBody = lang === "arduino_c" ? transpileArduinoC(src) : (lang === "micropython" ? transpileMicroPython(src) : src);
+        const factory = new Function(
+          "board",
+          `with (board) {\n${jsBody}\nreturn { setup: typeof setup === "function" ? setup : null, loop: typeof loop === "function" ? loop : null };\n}`
+        );
+        const compiled = factory(getBoardApi());
+        state.board.setupFn = compiled.setup;
+        state.board.loopFn = compiled.loop;
+        state.board.legacyFn = null;
+        state.strategyFn = null;
+        if (compiled.setup) compiled.setup(getBoardApi());
+        if ($("boardStatus")) $("boardStatus").textContent = `✅ [${bType} · ${lang} @ ${hz}Hz] 固件烧录成功，实时周期执行中`;
+        log(`⚡ 已将 ${lang} 固件烧录至仿真板 ${bType} (${hz}Hz)`);
+      } catch (e) {
+        if ($("boardStatus")) $("boardStatus").textContent = `❌ 编译错误: ${e.message}`;
+        boardSerialLog(`[编译错误] ${e.message}`);
+        log(`仿真板固件编译错误: ${e.message}`);
+      }
+    }
+
+    function getModuleParamsPayload() {
+      const batMap = {
+        "2s_ultralight": { voltage: 7.4, capacity_ah: 0.8 },
+        "3s_1500":       { voltage: 11.1, capacity_ah: 1.5 },
+        "4s_2200":       { voltage: 14.8, capacity_ah: 2.2 },
+        "6s_hv":         { voltage: 22.2, capacity_ah: 2.6 },
+      };
+      const bat = batMap[$("mBatterySpec")?.value] || batMap["3s_1500"];
+      const trackM = (Number($("mWheelTrack")?.value) || 210) / 1000;
+      const wbM = (Number($("mWheelBase")?.value) || 175) / 1000;
+      const frM = (Number($("mWheelR")?.value) || 30) / 1000;
+      const rrM = (Number($("mRearWheelR")?.value) || Number($("mWheelR")?.value) || 30) / 1000;
+      const wwM = (Number($("mWheelW")?.value) || 26) / 1000;
+      return {
+        chassis_main: {
+          width: Number($("mChassisW").value) / 1000,
+          length: Number($("mChassisL").value) / 1000,
+          ground_clearance: Math.max(0.005, (Number($("mGroundClear")?.value) || 18) / 1000),
+          frame_style: $("mChassisStyle")?.value || "dual_deck",
+          theme_color: $("mThemeColor")?.value || "carbon",
+          custom_hex: $("mCustomHex")?.value || "#8e44ad",
+          rear_mod: $("mRearMod")?.value || "none",
+        },
+        wheel_mecanum: {
+          drive_type: $("mDrive").value,
+          tire_type: $("mTireType")?.value || "mecanum",
+          locomotion_mode: $("mLocoMode")?.value || "holonomic_strafe",
+          wheel_count: (state.customWheels || []).length,
+          wheel_layout: $("mWheelLayout")?.value || "symmetric_axles",
+          front_radius: frM,
+          rear_radius: rrM,
+          wheel_width: wwM,
+          front_track: trackM,
+          rear_track: trackM,
+          wheelbase: wbM,
+          fwd_gain: Number($("mFwdGain")?.value) || 1.0,
+          strafe_gain: Number($("mStrafeGain")?.value) ?? 0.8,
+          omega_gain: Number($("mOmegaGain")?.value) || 1.0,
+          steer_max_deg: Number($("mSteerDeg")?.value) || 28,
+          traction_gain: Number($("mTractionGain")?.value) || 1.0,
+          custom_wheels: state.customWheels || [],
+        },
+        motor_drive: { rpm: Number($("mRpm").value) },
+        device_scoop: {
+          device_width: Number($("mScoopW").value) / 1000,
+          device_mount_y: Math.max(0, (Number($("mMountY")?.value) || 2) / 1000),
+          device_kind: $("mDeviceKind")?.value || "u_scoop",
+        },
+        wing_pair: {
+          left_wing_depth: Number($("mLwD").value) / 1000, left_wing_splay: Number($("mLwS").value),
+          right_wing_depth: Number($("mRwD").value) / 1000, right_wing_splay: Number($("mRwS").value),
+        },
+        camera_main: { camera_height: Number($("mCamH").value) / 1000, camera_pitch_deg: Number($("mCamP").value), fov_deg: Number($("mCamFov").value) },
+        sensor_laser: { sensor_suite: $("mSensorSuite")?.value || "laser3" },
+        ctrl_k230: { control_hz: Math.max(5, Math.min(200, Number($("boardHz")?.value) || 50)), board_type: $("boardType")?.value || "K230_LINUX" },
+        batt_3s: bat,
+      };
+    }
+
+    let syncTimer = null;
+    function scheduleSync() {
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => syncModulesToRust(), 240);
+    }
+
+    async function syncModulesToRust() {
+      state.mu = Number($("mMu").value) || 0.78;
+      $("camMeta").textContent = `高 ${$("mCamH").value}mm · 俯仰 ${$("mCamP").value}° · FOV ${$("mCamFov").value}°`;
+      updateWheelSummaryBadge();
+      if (!state.rustOk) return;
+      const res = await fetch("/api/assembly/sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(getModuleParamsPayload()),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.resolved) updateResolvedUI(data.resolved);
+        log("已同步所有独立模块与自定义轮系参数，并更新 3D 建模");
+      }
+    }
+
+    function updateResolvedUI(r) {
+      state.resolved = r;
+      $("tMass").textContent = `${(r.total_mass ?? 1.47).toFixed(2)} kg`;
+      $("tMouth").textContent = `${Math.round((r.mouth_width ?? 0.206) * 1000)} mm`;
+      $("tSpeed").textContent = `${(r.max_speed ?? 1.0).toFixed(2)} m/s`;
+      const env = r.envelope || [0.265, 0.225, 0.19];
+      $("tEnv").textContent = `${Math.round(env[0]*1000)}×${Math.round(env[1]*1000)}`;
+      if (state.wasmReady) syncWasmWorld(false);
+    }
+
+    async function refreshAssembly(hydrateInputs = false) {
+      try {
+        const res = await fetch("/api/assembly");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.resolved) updateResolvedUI(data.resolved);
+        const nodes = data.graph?.nodes || [];
+        if (hydrateInputs && nodes.length) {
+          const byId = Object.fromEntries(nodes.map((n) => [n.id, n.params || {}]));
+          if (byId.chassis_main?.width) $("mChassisW").value = Math.round(byId.chassis_main.width * 1000);
+          if (byId.chassis_main?.length) $("mChassisL").value = Math.round(byId.chassis_main.length * 1000);
+          if (byId.chassis_main?.ground_clearance != null && $("mGroundClear")) $("mGroundClear").value = Math.round(byId.chassis_main.ground_clearance * 1000);
+          if (byId.chassis_main?.frame_style && $("mChassisStyle")) $("mChassisStyle").value = byId.chassis_main.frame_style;
+          if (byId.chassis_main?.theme_color && $("mThemeColor")) $("mThemeColor").value = byId.chassis_main.theme_color;
+          if (byId.chassis_main?.custom_hex && $("mCustomHex")) $("mCustomHex").value = byId.chassis_main.custom_hex;
+          if (byId.chassis_main?.rear_mod && $("mRearMod")) $("mRearMod").value = byId.chassis_main.rear_mod;
+          if (byId.sensor_laser?.sensor_suite && $("mSensorSuite")) $("mSensorSuite").value = byId.sensor_laser.sensor_suite;
+          if (byId.batt_3s?.voltage && $("mBatterySpec")) {
+            const v = byId.batt_3s.voltage;
+            $("mBatterySpec").value = v > 18 ? "6s_hv" : (v > 13 ? "4s_2200" : (v < 9 ? "2s_ultralight" : "3s_1500"));
+          }
+          if (byId.wheel_mecanum) {
+            const wm = byId.wheel_mecanum;
+            if (wm.drive_type) $("mDrive").value = wm.drive_type;
+            if (wm.tire_type && $("mTireType")) $("mTireType").value = wm.tire_type;
+            if (wm.locomotion_mode && $("mLocoMode")) $("mLocoMode").value = wm.locomotion_mode;
+            if (wm.wheel_layout && $("mWheelLayout")) $("mWheelLayout").value = wm.wheel_layout;
+            const wr = wm.front_wheel_radius || wm.front_radius;
+            const rwr = wm.rear_wheel_radius || wm.rear_radius || wr;
+            if (wr) $("mWheelR").value = Math.round(wr * 1000);
+            if (rwr && $("mRearWheelR")) $("mRearWheelR").value = Math.round(rwr * 1000);
+            if (wm.wheel_width && $("mWheelW")) $("mWheelW").value = Math.round(wm.wheel_width * 1000);
+            if (wm.front_track && $("mWheelTrack")) $("mWheelTrack").value = Math.round(wm.front_track * 1000);
+            if (wm.wheelbase && $("mWheelBase")) $("mWheelBase").value = Math.round(wm.wheelbase * 1000);
+            if (wm.fwd_gain != null && $("mFwdGain")) $("mFwdGain").value = wm.fwd_gain;
+            if (wm.strafe_gain != null && $("mStrafeGain")) $("mStrafeGain").value = wm.strafe_gain;
+            if (wm.omega_gain != null && $("mOmegaGain")) $("mOmegaGain").value = wm.omega_gain;
+            if (wm.steer_max_deg != null && $("mSteerDeg")) $("mSteerDeg").value = wm.steer_max_deg;
+            if (wm.traction_gain != null && $("mTractionGain")) $("mTractionGain").value = wm.traction_gain;
+            const ws = Array.isArray(wm.custom_wheels) ? wm.custom_wheels : data.resolved?.custom_wheels;
+            if (Array.isArray(ws)) {
+              state.customWheels = ws;
+              renderWheelList();
+            }
+          }
+          if (byId.motor_drive?.rpm) $("mRpm").value = Math.round(byId.motor_drive.rpm);
+          if (byId.device_scoop?.device_kind) $("mDeviceKind").value = byId.device_scoop.device_kind;
+          if (byId.device_scoop?.device_width) $("mScoopW").value = Math.round(byId.device_scoop.device_width * 1000);
+          if (byId.device_scoop?.device_mount_y != null && $("mMountY")) $("mMountY").value = Math.round(byId.device_scoop.device_mount_y * 1000);
+          if (byId.wing_pair) {
+            if (byId.wing_pair.left_wing_depth != null) $("mLwD").value = Math.round(byId.wing_pair.left_wing_depth * 1000);
+            if (byId.wing_pair.left_wing_splay != null) $("mLwS").value = byId.wing_pair.left_wing_splay;
+            if (byId.wing_pair.right_wing_depth != null) $("mRwD").value = Math.round(byId.wing_pair.right_wing_depth * 1000);
+            if (byId.wing_pair.right_wing_splay != null) $("mRwS").value = byId.wing_pair.right_wing_splay;
+          }
+          if (byId.camera_main) {
+            if (byId.camera_main.camera_height) $("mCamH").value = Math.round(byId.camera_main.camera_height * 1000);
+            if (byId.camera_main.camera_pitch_deg != null) $("mCamP").value = byId.camera_main.camera_pitch_deg;
+            if (byId.camera_main.fov_deg) $("mCamFov").value = byId.camera_main.fov_deg;
+            $("camMeta").textContent = `高 ${$("mCamH").value}mm · 俯仰 ${$("mCamP").value}° · FOV ${$("mCamFov").value}°`;
+          }
+        }
+        const prevMesh = Object.fromEntries(state.customParts.map((p) => [p.id, p.mesh]));
+        const serverMeshes = data.custom_meshes || {};
+        state.customParts = nodes.filter((n) => n.kind === "custom_cad" || n.kind === "CustomCad").map((n) => ({
+          ...n,
+          mesh: serverMeshes[n.id] || prevMesh[n.id] || null,
+        }));
+        renderCadList();
+      } catch (_) {}
+    }
+
+    function renderCadList() {
+      const box = $("cadList");
+      if (!state.customParts.length) {
+        box.innerHTML = '<div class="list-item"><span>暂无自定义 CAD 拼装件</span></div>';
+        return;
+      }
+      box.innerHTML = state.customParts.map((n) => `
+        <div class="list-item">
+          <div>
+            <strong>${n.name}</strong>
+            <small>${(n.mass_kg * 1000).toFixed(1)} g · 节点 ${n.id}</small>
+          </div>
+          <div class="row-actions">
+            <button class="btn" onclick="window.open('/api/cad/export.stl?node=${encodeURIComponent(n.id)}','_blank')">STL</button>
+            <button class="btn" onclick="window.open('/api/cad/export.dxf?node=${encodeURIComponent(n.id)}','_blank')">DXF</button>
+            <button class="btn danger" onclick="deleteCadPart('${n.id}')">删除</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    window.deleteCadPart = async (id) => {
+      await fetch("/api/cad/delete", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ part_id: id }),
+      });
+      await refreshAssembly();
+      log(`已删除 CAD 零件 [${id}]`);
+    };
+
+    async function probeRust() {
+      try {
+        const res = await fetch("/api/health");
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          state.rustOk = true;
+          const modeLabel = data?.mode === "desktop" ? "🦀 Rust 桌面程序在线" : (data?.mode === "android" ? "🦀 Rust 安卓内核在线" : "🦀 Rust 引擎在线");
+          $("rustPill").textContent = modeLabel;
+          $("rustPill").className = "pill ok";
+          await refreshAssembly(true);
+          return;
+        }
+      } catch (_) {}
+      $("rustPill").textContent = "Rust 引擎离线";
+    }
+
+    document.querySelectorAll(".tab-btn").forEach((b) => b.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach((x) => x.classList.toggle("active", x === b));
+      document.querySelectorAll(".tab-pane").forEach((p) => p.classList.toggle("active", p.id === `tab-${b.dataset.tab}`));
+    }));
+
+    $("runBtn").addEventListener("click", () => {
+      if (!state.running && !canStartOfficialMatch()) return;
+      if (state.referee.finished) {
+        state.referee.finished = false;
+        state.referee.penaltySec = 0;
+        state.referee.resetCount = 0;
+        initPieces();
+      }
+      state.running = !state.running;
+      $("runBtn").textContent = state.running ? "⏸ 暂停" : "▶ 运行";
+    });
+    $("stepBtn").addEventListener("click", () => stepPhysics(0.025));
+    $("resetBtn").addEventListener("click", () => {
+      state.running = false;
+      state.referee.finished = false;
+      state.referee.penaltySec = 0;
+      state.referee.resetCount = 0;
+      $("runBtn").textContent = "▶ 运行";
+      initPieces();
+    });
+    $("camModeBtn").addEventListener("click", () => {
+      const modes = ["orbit", "chase", "fps"];
+      const labels = { orbit: "🎥 视角: 自由环绕3D", chase: "🎥 视角: 追尾3D跟拍", fps: "🎥 视角: 第一人称全屏3D" };
+      state.camFollowMode = modes[(modes.indexOf(state.camFollowMode) + 1) % modes.length];
+      $("camModeBtn").textContent = labels[state.camFollowMode];
+    });
+    $("exportJsonBtn").addEventListener("click", () => window.open("/api/assembly/export.json", "_blank"));
+    $("syncModulesBtn").addEventListener("click", syncModulesToRust);
+    $("scratchZeroBtn")?.addEventListener("click", resetFromZeroScratch);
+
+    $("mWheelTemplate")?.addEventListener("change", async (e) => {
+      const key = e.target.value;
+      if (!key) return;
+      await applyWheelTemplate(key, true);
+      log(`🧩 已切换轮系与行驶模板: ${e.target.options[e.target.selectedIndex].text}`);
+    });
+
+    const relayoutFromControls = (doSync = true) => {
+      const layout = $("mWheelLayout")?.value || "symmetric_axles";
+      if (layout !== "manual_free") {
+        state.customWheels = generateWheelLayout(layout, Number($("mWheelCount")?.value) || 0);
+        renderWheelList();
+      } else {
+        updateWheelSummaryBadge();
+      }
+      if (doSync) scheduleSync();
+    };
+
+    $("mWheelCount")?.addEventListener("input", () => {
+      if ($("mWheelLayout")?.value === "manual_free") $("mWheelLayout").value = "symmetric_axles";
+      relayoutFromControls(true);
+    });
+    ["mWheelLayout", "mTireType", "mWheelR", "mRearWheelR", "mWheelW", "mWheelTrack", "mWheelBase"].forEach((id) => {
+      $(id)?.addEventListener("input", () => relayoutFromControls(true));
+      $(id)?.addEventListener("change", () => relayoutFromControls(true));
+    });
+    $("mLocoMode")?.addEventListener("change", () => {
+      const lm = $("mLocoMode").value;
+      if ($("mStrafeGain")) $("mStrafeGain").value = (lm === "holonomic_strafe" || lm === "ackermann_4ws" || lm === "custom_vector") ? "0.8" : "0.0";
+      relayoutFromControls(true);
+    });
+    $("mDrive")?.addEventListener("change", () => {
+      const d = $("mDrive").value;
+      const map = { mecanum: "mecanum_4w", omni: "kiwi_3w", rwd_caster: "ackermann_4w", tracked: "tracked_tank", six_wd: "rocker_6wd" };
+      if (map[d]) applyWheelTemplate(map[d], true);
+    });
+
+    $("addWheelBtn")?.addEventListener("click", async () => {
+      const idx = state.customWheels.length;
+      const wb = Number($("mWheelBase")?.value) || 175;
+      const trk = Number($("mWheelTrack")?.value) || 210;
+      const row = Math.floor(idx / 2);
+      const side = idx % 2 === 0 ? -1 : 1;
+      const xMm = row === 0 ? Math.round(wb * 0.45) : (row === 1 ? -Math.round(wb * 0.45) : Math.round((row % 2 === 0 ? 1 : -1) * (wb * 0.25)));
+      const zMm = side * Math.round(trk * 0.5);
+      const rad = Math.max(0.008, (Number($("mWheelR")?.value) || 30) / 1000);
+      const wid = Math.max(0.008, (Number($("mWheelW")?.value) || 26) / 1000);
+      const tType = $("mTireType")?.value || "rubber";
+      const lMode = $("mLocoMode")?.value || "custom_vector";
+      state.customWheels.push({
+        id: `w${idx + 1}`,
+        x_m: xMm / 1000,
+        z_m: zMm / 1000,
+        radius_m: rad,
+        width_m: wid,
+        yaw_deg: 0,
+        tire_type: tType,
+        driven: true,
+        steered: (lMode === "ackermann_4ws") || (lMode === "ackermann_front" && xMm > 0),
+      });
+      if ($("mWheelLayout")) $("mWheelLayout").value = "manual_free";
+      renderWheelList();
+      await syncModulesToRust();
+      log(`➕ 已手工添加第 ${state.customWheels.length} 颗轮胎 (${tType}, X=${xMm}mm, Z=${zMm}mm)`);
+    });
+    $("relayoutWheelsBtn")?.addEventListener("click", async () => {
+      if ($("mWheelLayout")?.value === "manual_free") $("mWheelLayout").value = "symmetric_axles";
+      state.customWheels = generateWheelLayout($("mWheelLayout").value, Number($("mWheelCount")?.value) || 0);
+      renderWheelList();
+      await syncModulesToRust();
+      log("📐 已按当前拓扑重排所有轮胎位置");
+    });
+    $("clearWheelsBtn")?.addEventListener("click", async () => {
+      state.customWheels = [];
+      if ($("mWheelCount")) $("mWheelCount").value = 0;
+      if ($("mWheelLayout")) $("mWheelLayout").value = "manual_free";
+      renderWheelList();
+      await syncModulesToRust();
+      log("🧹 已清空全部轮胎（当前 0 轮）");
+    });
+
+    const MODEL_PRESETS = {
+      std_mecanum:    { frame: "dual_deck",   wheelTpl: "mecanum_4w",  theme: "carbon",   dev: "u_scoop",     rear: "none",          sen: "laser3",     bat: "3s_1500", w: 215, l: 235, gc: 18, rpm: 420, sw: 195, my: 2, lwd: 36, lws: 12, rwd: 36, rws: 12, ch: 185, cp: 22 },
+      roller_blitz:   { frame: "low_rider",   wheelTpl: "mecanum_4w",  theme: "cobalt",   dev: "roller",      rear: "storage_bin",   sen: "stereo_cam", bat: "4s_2200", w: 210, l: 230, gc: 14, rpm: 540, sw: 210, my: 2, lwd: 30, lws: 12, rwd: 30, rws: 12, ch: 175, cp: 24 },
+      tank_conveyor:  { frame: "armored_box", wheelTpl: "tracked_tank",theme: "olive",    dev: "conveyor",    rear: "counterweight", sen: "omni_ir",    bat: "4s_2200", w: 225, l: 245, gc: 20, rpm: 500, sw: 210, my: 2, lwd: 28, lws: 10, rwd: 28, rws: 10, ch: 205, cp: 25 },
+      gate_radar:     { frame: "armored_box", wheelTpl: "mecanum_4w",  theme: "titanium", dev: "funnel_gate", rear: "storage_bin",   sen: "lidar360",   bat: "4s_2200", w: 220, l: 240, gc: 18, rpm: 540, sw: 220, my: 2, lwd: 36, lws: 14, rwd: 36, rws: 14, ch: 200, cp: 24 },
+      hex_vacuum:     { frame: "hex_open",    wheelTpl: "kiwi_3w",     theme: "titanium", dev: "vacuum",      rear: "storage_bin",   sen: "lidar360",   bat: "4s_2200", w: 220, l: 220, gc: 16, rpm: 560, sw: 200, my: 2, lwd: 24, lws: 10, rwd: 24, rws: 10, ch: 190, cp: 22 },
+      arm_forklift:   { frame: "truss_cage",  wheelTpl: "rocker_6wd",  theme: "rescue",   dev: "mag_arm",     rear: "counterweight", sen: "stereo_cam", bat: "4s_2200", w: 220, l: 250, gc: 22, rpm: 540, sw: 195, my: 2, lwd: 20, lws: 8,  rwd: 20, rws: 8,  ch: 215, cp: 26 },
+      vplow_turbo:    { frame: "low_rider",   wheelTpl: "tracked_tank",theme: "rescue",   dev: "plow_v",      rear: "turbo_fan",     sen: "omni_ir",    bat: "6s_hv",   w: 225, l: 245, gc: 14, rpm: 620, sw: 230, my: 2, lwd: 45, lws: 20, rwd: 45, rws: 20, ch: 180, cp: 22 },
+      stealth_gripper:{ frame: "low_rider",   wheelTpl: "ackermann_4w",theme: "carbon",   dev: "pincer_claw", rear: "dual_scoop",    sen: "laser3",     bat: "4s_2200", w: 195, l: 225, gc: 12, rpm: 600, sw: 205, my: 2, lwd: 20, lws: 8,  rwd: 20, rws: 8,  ch: 170, cp: 20 },
+    };
+    $("mModelPreset")?.addEventListener("change", async (e) => {
+      const p = MODEL_PRESETS[e.target.value];
+      if (!p) return;
+      $("mChassisStyle").value = p.frame; $("mThemeColor").value = p.theme;
+      $("mDeviceKind").value = p.dev; $("mRearMod").value = p.rear; $("mSensorSuite").value = p.sen; $("mBatterySpec").value = p.bat;
+      $("mChassisW").value = p.w; $("mChassisL").value = p.l;
+      $("mGroundClear").value = p.gc; $("mRpm").value = p.rpm;
+      $("mScoopW").value = p.sw; $("mMountY").value = p.my;
+      $("mLwD").value = p.lwd; $("mLwS").value = p.lws; $("mRwD").value = p.rwd; $("mRwS").value = p.rws;
+      $("mCamH").value = p.ch; $("mCamP").value = p.cp;
+      if ($("mWheelTemplate")) $("mWheelTemplate").value = p.wheelTpl;
+      await applyWheelTemplate(p.wheelTpl, false);
+      await syncModulesToRust();
+      log(`✨ 已切换整车 3D 模型预设: ${e.target.options[e.target.selectedIndex].text}`);
+    });
+    $("mCustomHex")?.addEventListener("input", () => { if ($("mThemeColor")) $("mThemeColor").value = "custom"; });
+    $("mLayoutMode")?.addEventListener("change", () => { initPieces(); log(`棋子初始阵型已切换: ${$("mLayoutMode").options[$("mLayoutMode").selectedIndex].text}`); });
+    $("mMatchMode")?.addEventListener("change", () => { initPieces(); log(`赛制模式已切换: ${$("mMatchMode").options[$("mMatchMode").selectedIndex].text}`); });
+
+    const wheelAutoIds = new Set(["mModelPreset", "mWheelTemplate", "mLayoutMode", "mMatchMode", "mWheelCount", "mWheelLayout", "mTireType", "mLocoMode", "mDrive", "mWheelR", "mRearWheelR", "mWheelW", "mWheelTrack", "mWheelBase"]);
+    document.querySelectorAll("#tab-modules input, #tab-modules select").forEach((el) => {
+      if (wheelAutoIds.has(el.id) || el.closest("#customWheelList")) return;
+      el.addEventListener("input", () => {
+        $("camMeta").textContent = `高 ${$("mCamH").value}mm · 俯仰 ${$("mCamP").value}° · FOV ${$("mCamFov").value}°`;
+        scheduleSync();
+      });
+    });
+    $("cKind").addEventListener("change", (e) => { $("cPolyWrap").style.display = e.target.value === "polygon" ? "grid" : "none"; });
+
+    $("cadExtrudeBtn").addEventListener("click", async () => {
+      let outline = null;
+      if ($("cKind").value === "polygon") { try { outline = JSON.parse($("cPoly").value); } catch (_) {} }
+      const pid = `cad_${Date.now()}`;
+      const res = await fetch("/api/cad/extrude", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          part_id: pid, name: $("cName").value || "自定义CAD件", kind: $("cKind").value,
+          parent_id: "chassis_main", port_id: $("cPort").value,
+          width: Number($("cW").value) / 1000, length: Number($("cL").value) / 1000,
+          thickness: Number($("cT").value) / 1000, density_kg_m3: Number($("cDensity").value),
+          offset: [Number($("cOx").value) / 1000, Number($("cOy").value) / 1000, (Number($("cOz")?.value) || 0) / 1000],
+          yaw_deg: Number($("cYaw")?.value) || 0,
+          color: $("cColor")?.value || "#2d9279",
+          outline,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const tris = d.mesh?.triangles?.length || 0;
+        const vol = ((d.mesh?.volume_m3 || 0) * 1e6).toFixed(1);
+        const g = ((d.mesh?.mass_kg || 0) * 1000).toFixed(1);
+        $("cadStats").textContent = `${tris}面 · ${vol}cm³ · ${g}g`;
+        if (d.resolved) updateResolvedUI(d.resolved);
+        await refreshAssembly();
+        const item = state.customParts.find((p) => p.id === pid);
+        if (item && d.mesh) item.mesh = d.mesh;
+        log(`已生成 3D CAD 拼装件 [${$("cName").value}] (${g}g)`);
+      }
+    });
+
+    $("expChassisStlBtn").addEventListener("click", async () => { await syncModulesToRust(); window.open("/api/cad/export.stl?node=chassis_main", "_blank"); });
+    $("expScoopStlBtn").addEventListener("click", async () => { await syncModulesToRust(); window.open("/api/cad/export.stl?node=device_scoop", "_blank"); });
+
+    $("optRunBtn").addEventListener("click", async () => {
+      $("optRunBtn").disabled = true;
+      $("optStatus").textContent = "Rust 多核并行评估中...";
+      await syncModulesToRust();
+      const res = await fetch("/api/sim/optimize", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preset: $("mPreset").value, seeds: [42, 101, 202, 303] }),
+      });
+      const data = await res.json();
+      $("optRunBtn").disabled = false;
+      const cands = data.candidates || [];
+      $("optStatus").textContent = `完成 ${cands.length} 构型 × ${data.seeds_count} 种子并行仿真，用时 ${data.elapsed_ms} ms`;
+      window._lastRustCands = cands;
+      $("optList").innerHTML = cands.map((c, idx) => `
+        <div class="list-item">
+          <div>
+            <strong>#${idx + 1} ${c.label}</strong>
+            <small>均分 ${c.avg_score.toFixed(1)}/45 · 耗时 ${c.avg_finish_s.toFixed(1)}s · 打滑 ${c.avg_slip_events.toFixed(1)} · ${c.total_mass_kg.toFixed(2)}kg</small>
+          </div>
+          <button class="btn primary" onclick="applyOpt(${idx})">✨ 应用</button>
+        </div>
+      `).join("");
+    });
+
+    window.applyOpt = async (idx) => {
+      const c = window._lastRustCands?.[idx];
+      if (!c) return;
+      const byId = Object.fromEntries((c.graph?.nodes || []).map((n) => [n.id, n.params]));
+      if (byId.chassis_main?.frame_style && $("mChassisStyle")) $("mChassisStyle").value = byId.chassis_main.frame_style;
+      if (byId.chassis_main?.rear_mod && $("mRearMod")) $("mRearMod").value = byId.chassis_main.rear_mod;
+      if (byId.sensor_laser?.sensor_suite && $("mSensorSuite")) $("mSensorSuite").value = byId.sensor_laser.sensor_suite;
+      if (byId.device_scoop?.device_width) $("mScoopW").value = Math.round(byId.device_scoop.device_width * 1000);
+      if (byId.device_scoop?.device_kind) $("mDeviceKind").value = byId.device_scoop.device_kind;
+      if (byId.wing_pair) {
+        $("mLwD").value = Math.round((byId.wing_pair.left_wing_depth || 0.02) * 1000);
+        $("mLwS").value = byId.wing_pair.left_wing_splay || 10;
+        $("mRwD").value = Math.round((byId.wing_pair.right_wing_depth || 0.02) * 1000);
+        $("mRwS").value = byId.wing_pair.right_wing_splay || 10;
+      }
+      if (byId.motor_drive?.rpm) $("mRpm").value = byId.motor_drive.rpm;
+      if (byId.wheel_mecanum) {
+        const wm = byId.wheel_mecanum;
+        if (wm.drive_type) $("mDrive").value = wm.drive_type;
+        if (wm.tire_type && $("mTireType")) $("mTireType").value = wm.tire_type;
+        if (wm.locomotion_mode && $("mLocoMode")) $("mLocoMode").value = wm.locomotion_mode;
+        if (wm.wheel_count != null && $("mWheelCount")) $("mWheelCount").value = wm.wheel_count;
+        const layout = (wm.wheel_count === 3 && wm.tire_type === "omni") ? "radial_omni" : (wm.drive_type === "tracked" ? "tracked" : "symmetric_axles");
+        if ($("mWheelLayout")) $("mWheelLayout").value = layout;
+        state.customWheels = Array.isArray(wm.custom_wheels)
+          ? wm.custom_wheels
+          : generateWheelLayout(layout, wm.wheel_count || 4, { tireType: wm.tire_type || "mecanum", locoMode: wm.locomotion_mode || "holonomic_strafe" });
+        renderWheelList();
+      }
+      await syncModulesToRust();
+      log(`已应用最优构型: ${c.label}`);
+    };
+
+    $("headlessRunBtn").addEventListener("click", async () => {
+      await syncModulesToRust();
+      const res = await fetch("/api/sim/run", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preset: $("mPreset").value, seed: 42, duration_s: 120 }),
+      });
+      const data = await res.json();
+      const s = data.summary;
+      if (s) $("optStatus").textContent = `单场评估: 得分 ${s.score}/45 · 入区 ${s.collected}枚 · 用时 ${s.finish_time_s.toFixed(1)}s · 峰值推力 ${s.peak_force_n.toFixed(1)}N · 能耗 ${s.energy_j.toFixed(0)}J`;
+    });
+
+    $("strategyPreset").addEventListener("change", (e) => {
+      const k = e.target.value;
+      $("codeInput").value = STRATEGIES[k];
+      if ($("codeLang")) {
+        $("codeLang").value = k.startsWith("c_") ? "arduino_c" : (k.startsWith("py_") ? "micropython" : "js_sdk");
+      }
+      compileStrategy();
+    });
+    $("boardHz")?.addEventListener("change", () => {
+      state.board.hz = Math.max(5, Math.min(200, Number($("boardHz").value) || 50));
+      compileStrategy();
+      scheduleSync();
+    });
+    $("boardType")?.addEventListener("change", () => {
+      const defaults = { K230_LINUX: 50, STM32_F4: 100, ESP32_S3: 50, ARDUINO_MEGA: 30 };
+      if ($("boardHz") && defaults[$("boardType").value]) $("boardHz").value = defaults[$("boardHz") ? $("boardType").value : "K230_LINUX"];
+      compileStrategy();
+      scheduleSync();
+    });
+    $("applyCodeBtn").addEventListener("click", compileStrategy);
+    $("flashAndRunBtn")?.addEventListener("click", () => {
+      compileStrategy();
+      state.workshop.stepsDone[4] = true;
+      renderBuildSteps();
+      if (!canStartOfficialMatch()) return;
+      state.referee.finished = false;
+      state.referee.penaltySec = 0;
+      state.referee.resetCount = 0;
+      initPieces();
+      state.running = true;
+      if ($("runBtn")) $("runBtn").textContent = "⏸ 暂停";
+    });
+    $("exportCodeBtn")?.addEventListener("click", () => {
+      const lang = $("codeLang")?.value || "arduino_c";
+      const ext = lang === "arduino_c" ? "ino" : (lang === "micropython" ? "py" : "js");
+      const bType = ($("boardType")?.value || "K230_LINUX").toLowerCase();
+      const blob = new Blob([$("codeInput").value], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `xiangqi_firmware_${bType}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      log(`已导出固件源码: xiangqi_firmware_${bType}.${ext}`);
+    });
+    $("clearSerialBtn")?.addEventListener("click", () => {
+      if ($("serialMonitor")) $("serialMonitor").innerHTML = "[串口监视器] 已清空";
+    });
+    $("mcpListBtn").addEventListener("click", async () => {
+      const res = await fetch("/api/mcp/call", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "get_assembly_graph", arguments: {} }),
+      });
+      const d = await res.json();
+      $("mcpOut").textContent = `MCP 返回: ${d.graph?.nodes?.length || 0} 个独立硬件/CAD节点 · 整车 ${(d.resolved?.total_mass || 0).toFixed(2)}kg`;
+    });
+
+    // 3D 视口自由拖拽旋转与滚轮缩放
+    const fc = $("fieldCanvas");
+    let dragPt = null;
+    fc.addEventListener("pointerdown", (e) => { dragPt = { x: e.clientX, y: e.clientY }; });
+    window.addEventListener("pointermove", (e) => {
+      if (!dragPt) return;
+      const dx = e.clientX - dragPt.x, dy = e.clientY - dragPt.y;
+      dragPt = { x: e.clientX, y: e.clientY };
+      state.orbit.yaw -= dx * 0.008;
+      state.orbit.pitch = Math.max(0.15, Math.min(1.48, state.orbit.pitch + dy * 0.006));
+    });
+    window.addEventListener("pointerup", () => { dragPt = null; });
+    fc.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      state.orbit.dist = Math.max(0.8, Math.min(6.0, state.orbit.dist + e.deltaY * 0.002));
+    }, { passive: false });
+
+    // 第一人称车载相机窗口：上下拖拽直接调俯仰角，滚轮调相机安装高度
+    const ccEl = $("camCanvas");
+    let camDragY = null;
+    ccEl.addEventListener("pointerdown", (e) => { camDragY = e.clientY; });
+    window.addEventListener("pointermove", (e) => {
+      if (camDragY === null) return;
+      const dy = e.clientY - camDragY;
+      camDragY = e.clientY;
+      const nextP = Math.max(-45, Math.min(75, (Number($("mCamP").value) || 22) + dy * 0.25));
+      $("mCamP").value = nextP.toFixed(0);
+      $("camMeta").textContent = `高 ${$("mCamH").value}mm · 俯仰 ${$("mCamP").value}° · FOV ${$("mCamFov").value}°`;
+    });
+    window.addEventListener("pointerup", () => { camDragY = null; });
+    ccEl.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const nextH = Math.max(40, Math.min(450, (Number($("mCamH").value) || 185) - e.deltaY * 0.06));
+      $("mCamH").value = nextH.toFixed(0);
+      $("camMeta").textContent = `高 ${$("mCamH").value}mm · 俯仰 ${$("mCamP").value}° · FOV ${$("mCamFov").value}°`;
+    }, { passive: false });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.target && ["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.code === "Space") { e.preventDefault(); $("runBtn")?.click(); return; }
+      if (e.code === "KeyR") { $("resetBtn")?.click(); return; }
+      if (e.code === "KeyC") { $("camModeBtn")?.click(); return; }
+      if (e.code === "KeyI") { $("inspectBtn")?.click(); return; }
+      const tabIdx = ["Digit1","Digit2","Digit3","Digit4","Digit5"].indexOf(e.code);
+      if (tabIdx >= 0) { document.querySelectorAll(".tab-btn")[tabIdx]?.click(); }
+    });
+    $("clearHistoryBtn")?.addEventListener("click", () => {
+      localStorage.removeItem("xq_match_history");
+      renderMatchHistory();
+      log("战绩排行榜已清空");
+    });
+    renderMatchHistory();
+
+    const keyMap = { KeyW: "w", ArrowUp: "w", KeyS: "s", ArrowDown: "s", KeyA: "a", ArrowLeft: "a", KeyD: "d", ArrowRight: "d", KeyQ: "q", KeyE: "e" };
+    window.addEventListener("keydown", (e) => {
+      if (e.target && ["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName)) return;
+      if (keyMap[e.code]) { state.keys[keyMap[e.code]] = true; e.preventDefault(); }
+    });
+    window.addEventListener("keyup", (e) => { if (keyMap[e.code]) state.keys[keyMap[e.code]] = false; });
+    [["padUp","w"],["padDown","s"],["padLeft","a"],["padRight","d"]].forEach(([id, k]) => {
+      const btn = $(id);
+      if (!btn) return;
+      btn.addEventListener("pointerdown", () => { state.keys[k] = true; });
+      btn.addEventListener("pointerup", () => { state.keys[k] = false; });
+      btn.addEventListener("pointerleave", () => { state.keys[k] = false; });
+    });
+
+    // ==================== 实体造车工坊 (选件BOM / 3D打印切片 / 6步装调 / 官方竞赛检录与裁判) ====================
+    const BOM_CATALOG = [
+      { id: "m_mg513",    cat: "电机", name: "MG513 编码减速电机 (12V 260RPM)", massG: 115, price: 38, apply: { rpm: 260 } },
+      { id: "m_jgb37",    cat: "电机", name: "JGB37-520 大扭矩电机 (12V 330RPM)", massG: 155, price: 45, apply: { rpm: 330 } },
+      { id: "m_hub",      cat: "电机", name: "无刷轮毂直驱电机 (14.8V 520RPM)", massG: 95,  price: 120, apply: { rpm: 520 } },
+      { id: "b_k230",     cat: "主控", name: "CanMV K230 AI 视觉主控板",        massG: 45,  price: 299, apply: { board: "K230_LINUX" } },
+      { id: "b_stm32",    cat: "主控", name: "STM32F407VET6 实时电控核心板",     massG: 28,  price: 68,  apply: { board: "STM32_F4" } },
+      { id: "b_esp32",    cat: "主控", name: "ESP32-S3 双核视觉模组",            massG: 18,  price: 45,  apply: { board: "ESP32_S3" } },
+      { id: "bat_3s",     cat: "电池", name: "3S 11.1V 1500mAh 35C 航模锂电",    massG: 125, price: 75,  apply: { bat: "3s_1500" } },
+      { id: "bat_4s",     cat: "电池", name: "4S 14.8V 2200mAh 45C 高倍率锂电",  massG: 215, price: 125, apply: { bat: "4s_2200" } },
+      { id: "bat_2s",     cat: "电池", name: "2S 7.4V 800mAh 超轻锂电",          massG: 52,  price: 42,  apply: { bat: "2s_ultralight" } },
+      { id: "w_mec60",    cat: "轮系", name: "60mm 铝合金麦克纳姆轮 (4只装)",     massG: 280, price: 128, apply: { wheelTpl: "mecanum_4w" } },
+      { id: "w_omni58",   cat: "轮系", name: "58mm 双排全向轮 (4只装)",          massG: 210, price: 96,  apply: { wheelTpl: "omni_4w" } },
+      { id: "drv_tb6612", cat: "电控", name: "TB6612FNG 双路电机驱动模块",        massG: 12,  price: 14 },
+      { id: "sen_vl53",   cat: "传感", name: "VL53L0X ToF 激光测距阵列 (×3)",    massG: 15,  price: 36,  apply: { sen: "laser3" } },
+      { id: "f_m3kit",    cat: "紧固", name: "M3×12 不锈钢内六角螺丝+铜柱套装",   massG: 42,  price: 18 },
+      { id: "w_xt60",     cat: "线材", name: "XT60 动力线+船型开关+杜邦线束",     massG: 35,  price: 15 },
+    ];
+
+    const PRINT_PARTS = {
+      chassis_frame: { name: "双层底盘主框架",   volCm3: 68, zMm: 24, stlUrl: "/api/cad/export.stl?node=chassis_main" },
+      front_scoop:   { name: "前部收集推斗",     volCm3: 44, zMm: 48, stlUrl: "/api/cad/export.stl?node=device_scoop" },
+      cam_mount:     { name: "K230 相机俯仰支架", volCm3: 18, zMm: 62, stlUrl: "/api/cad/export.stl?node=chassis_main" },
+      motor_bracket: { name: "电机固定座 ×4",    volCm3: 22, zMm: 28, stlUrl: "/api/cad/export.stl?node=chassis_main" },
+      battery_cage:  { name: "锂电池防撞仓",     volCm3: 26, zMm: 36, stlUrl: "/api/cad/export.stl?node=chassis_main" },
+    };
+    const PRINT_MATS = {
+      pla:    { name: "PLA",    rho: 1.24, cnyPerG: 0.09, noz: 205, bed: 55, str: "55MPa (脆性)" },
+      petg:   { name: "PETG",   rho: 1.27, cnyPerG: 0.11, noz: 235, bed: 75, str: "50MPa (高韧)" },
+      abs:    { name: "ABS",    rho: 1.04, cnyPerG: 0.12, noz: 245, bed: 95, str: "45MPa (耐温)" },
+      pla_cf: { name: "PLA-CF", rho: 1.30, cnyPerG: 0.24, noz: 220, bed: 60, str: "78MPa (碳纤刚性)" },
+    };
+    const BUILD_STEPS = [
+      "1. 硬件选件备料（电机/主控/电池/轮系/M3紧固件）",
+      "2. 3D 打印机切片并打印核心结构件（底盘+推斗）",
+      "3. 机械拧螺丝装配（锁紧电机座/铜柱/车轮/推斗）",
+      "4. 电源焊接与信号接线（XT60开关→驱动板→PWM/I2C）",
+      "5. 仿真主控板固件烧录与串口心跳联调",
+      "6. 赛前官方检录（300×300×300mm限框 & ≤3.0kg）",
+    ];
+
+    function renderBomCatalog() {
+      const box = $("bomCatalogList");
+      if (!box) return;
+      const sel = state.workshop.bomSelected;
+      let totalQty = 0, totalG = 0, totalPrice = 0;
+      box.innerHTML = BOM_CATALOG.map((item) => {
+        const q = sel[item.id] || 0;
+        totalQty += q; totalG += q * item.massG; totalPrice += q * item.price;
+        return `<div class="list-item">
+          <span><b>[${item.cat}]</b> ${item.name} · ${item.massG}g · ¥${item.price}</span>
+          <div style="display:flex;gap:3px;align-items:center;">
+            <button class="btn" style="padding:1px 6px;" onclick="chgBomQty('${item.id}',-1)">-</button>
+            <span class="mono" style="min-width:16px;text-align:center;">${q}</span>
+            <button class="btn" style="padding:1px 6px;" onclick="chgBomQty('${item.id}',1)">+</button>
+          </div>
+        </div>`;
+      }).join("");
+      const printedG = Object.values(state.workshop.printedParts).reduce((s, p) => s + (p.massG || 0), 0);
+      if ($("bomSummary")) $("bomSummary").textContent = `BOM: ${totalQty}件 · 硬件${totalG}g + 打印件${printedG.toFixed(0)}g · 总价 ¥${totalPrice}`;
+      state.workshop.stepsDone[0] = totalQty >= 6;
+      renderBuildSteps();
+    }
+
+    window.chgBomQty = (id, delta) => {
+      const cur = state.workshop.bomSelected[id] || 0;
+      const nxt = Math.max(0, Math.min(12, cur + delta));
+      if (nxt === 0) delete state.workshop.bomSelected[id];
+      else state.workshop.bomSelected[id] = nxt;
+      renderBomCatalog();
+    };
+
+    function calcSliceEstimate() {
+      const pk = $("prPart")?.value || "chassis_frame";
+      const mk = $("prMat")?.value || "petg";
+      const layer = Number($("prLayer")?.value) || 0.20;
+      const infill = Number($("prInfill")?.value) || 25;
+      const part = PRINT_PARTS[pk] || PRINT_PARTS.chassis_frame;
+      const mat = PRINT_MATS[mk] || PRINT_MATS.petg;
+      const fillRatio = 0.28 + 0.72 * (infill / 100);
+      const effVol = part.volCm3 * fillRatio;
+      const massG = effVol * mat.rho;
+      const layers = Math.max(10, Math.round(part.zMm / layer));
+      const mins = Math.round(layers * (0.28 + fillRatio * 0.45) * (part.volCm3 / 45));
+      const cost = massG * mat.cnyPerG;
+      if ($("prStats")) $("prStats").textContent = `切片: ${layers}层 · ${massG.toFixed(1)}g ${mat.name} · 约${mins}min · ¥${cost.toFixed(1)} · ${mat.str}`;
+      return { pk, part, mat, layers, massG, mins, cost };
+    }
+
+    function renderPrintedList() {
+      const el = $("printedList");
+      if (!el) return;
+      const vals = Object.values(state.workshop.printedParts);
+      el.textContent = vals.length
+        ? `已打印入库零件 (${vals.length}): ` + vals.map((v) => `${v.name}(${v.mat}/${v.massG.toFixed(0)}g)`).join("、")
+        : "已打印入库零件: 无（请切片并启动 3D 打印）";
+      state.workshop.stepsDone[1] = Boolean(state.workshop.printedParts.chassis_frame && state.workshop.printedParts.front_scoop);
+      renderBuildSteps();
+    }
+
+    function renderBuildSteps() {
+      const box = $("buildStepsList");
+      if (!box) return;
+      box.innerHTML = BUILD_STEPS.map((label, idx) => {
+        const done = !!state.workshop.stepsDone[idx];
+        return `<div class="list-item">
+          <span style="color:${done ? "var(--mint)" : "var(--ink)"};">${done ? "✅" : "⬜"} ${label}</span>
+          <button class="btn" style="padding:2px 7px;" onclick="toggleBuildStep(${idx})">${done ? "已完成" : "执行工序"}</button>
+        </div>`;
+      }).join("");
+    }
+
+    window.toggleBuildStep = (idx) => {
+      if (idx === 1 && !state.workshop.stepsDone[1]) {
+        // Quick print chassis & scoop if clicked from checklist
+        ["chassis_frame", "front_scoop"].forEach((k) => {
+          if (!state.workshop.printedParts[k]) {
+            const p = PRINT_PARTS[k];
+            state.workshop.printedParts[k] = { name: p.name, mat: "PETG", massG: p.volCm3 * 0.52 * 1.27 };
+          }
+        });
+        renderPrintedList();
+        renderBomCatalog();
+        log("🖨️ 已完成底盘框架与前部推斗 3D 打印出库");
+        return;
+      }
+      if (idx === 4) { compileStrategy(); }
+      if (idx === 5) { runOfficialInspection(); return; }
+      state.workshop.stepsDone[idx] = !state.workshop.stepsDone[idx];
+      renderBuildSteps();
+      log(`${state.workshop.stepsDone[idx] ? "✅ 完成" : "↩ 取消"}工序: ${BUILD_STEPS[idx]}`);
+    };
+
+    function runOfficialInspection() {
+      const env = state.resolved?.envelope || [0.265, 0.225, 0.19];
+      const lMm = Math.round(env[0] * 1000), wMm = Math.round(env[1] * 1000), hMm = Math.round((Number($("mCamH")?.value) || 185) + 35);
+      const massKg = state.resolved?.total_mass ?? 1.47;
+      const inBox = lMm <= 300 && wMm <= 300 && hMm <= 300;
+      const inWeight = massKg <= 3.0;
+      const inStart = state.robot.x >= GOAL.minX && state.robot.x <= GOAL.maxX + 0.08 && state.robot.z >= GOAL.minZ && state.robot.z <= GOAL.maxZ;
+      const hasBoard = Boolean(state.board.loopFn || state.board.legacyFn);
+      const ok = inBox && inWeight && inStart && hasBoard;
+      state.referee.inspectedOk = ok;
+      state.workshop.stepsDone[5] = ok;
+      renderBuildSteps();
+      const rep = $("inspectReport");
+      if (rep) {
+        rep.style.color = ok ? "var(--mint)" : "var(--red)";
+        rep.textContent = `${ok ? "✅ 官方检录通过" : "❌ 官方检录未通过"} | 尺寸 ${lMm}×${wMm}×${hMm}mm (≤300:${inBox ? "✓" : "超限"}) · 质量 ${massKg.toFixed(2)}kg (≤3.0:${inWeight ? "✓" : "超重"}) · 出发区(${inStart ? "✓" : "未归位"}) · 自主固件(${hasBoard ? "✓" : "未烧录"})`;
+      }
+      log(ok ? "📋 [官方检录] 全部指标合格，允许进入正式比赛!" : "⚠️ [官方检录] 存在不合规项，请调整尺寸/重量/复位后重新检录");
+      return ok;
+    }
+
+    function canStartOfficialMatch() {
+      if (!state.workshop.strictMode) return true;
+      const missing = BUILD_STEPS.filter((_, i) => !state.workshop.stepsDone[i]);
+      if (missing.length) {
+        log(`🔒 [真实制作约束] 尚有 ${missing.length} 项实体装调/检录未完成，请先在「🏭 实体造车&赛规」完成打印、装调与官方检录!`);
+        if ($("inspectReport")) $("inspectReport").textContent = `🔒 真实制作约束拦截: 尚缺 ${missing[0]}`;
+        return false;
+      }
+      return true;
+    }
+
+    $("applyBomBtn")?.addEventListener("click", async () => {
+      const sel = state.workshop.bomSelected;
+      for (const item of BOM_CATALOG) {
+        if (!sel[item.id] || !item.apply) continue;
+        if (item.apply.rpm && $("mRpm")) $("mRpm").value = item.apply.rpm;
+        if (item.apply.bat && $("mBatterySpec")) $("mBatterySpec").value = item.apply.bat;
+        if (item.apply.sen && $("mSensorSuite")) $("mSensorSuite").value = item.apply.sen;
+        if (item.apply.board && $("boardType")) $("boardType").value = item.apply.board;
+        if (item.apply.wheelTpl && $("mWheelTemplate")) {
+          $("mWheelTemplate").value = item.apply.wheelTpl;
+          await applyWheelTemplate(item.apply.wheelTpl, false);
+        }
+      }
+      await syncModulesToRust();
+      compileStrategy();
+      log("⚙️ 已将 BOM 选定真实硬件（电机/电池/主控/轮系）同步到 3D 机器人与物理内核");
+    });
+
+    $("exportBomCsvBtn")?.addEventListener("click", () => {
+      const rows = ["类别,型号名称,数量,单重(g),单价(元),小计(元)"];
+      for (const item of BOM_CATALOG) {
+        const q = state.workshop.bomSelected[item.id] || 0;
+        if (q > 0) rows.push(`${item.cat},${item.name},${q},${item.massG},${item.price},${q * item.price}`);
+      }
+      const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "xiangqi_robot_bom.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      log("📄 已导出真实采购 BOM 清单: xiangqi_robot_bom.csv");
+    });
+
+    ["prPart", "prMat", "prLayer", "prInfill"].forEach((id) => $(id)?.addEventListener("change", calcSliceEstimate));
+    $("prStartBtn")?.addEventListener("click", () => {
+      if (state.workshop.printingTimer) { clearInterval(state.workshop.printingTimer); state.workshop.printingTimer = null; }
+      const est = calcSliceEstimate();
+      let curLayer = 0;
+      const step = Math.max(1, Math.ceil(est.layers / 24));
+      log(`🖨️ 开始 3D 打印 [${est.part.name}] · 喷头 ${est.mat.noz}°C / 热床 ${est.mat.bed}°C · 共 ${est.layers} 层`);
+      state.workshop.printingTimer = setInterval(() => {
+        curLayer = Math.min(est.layers, curLayer + step);
+        const pct = Math.round((curLayer / est.layers) * 100);
+        if ($("prBar")) $("prBar").style.width = `${pct}%`;
+        if ($("prStats")) $("prStats").textContent = `打印中 [${est.part.name}]: Layer ${curLayer}/${est.layers} (${pct}%) · ${est.mat.noz}°C/${est.mat.bed}°C`;
+        if (curLayer >= est.layers) {
+          clearInterval(state.workshop.printingTimer);
+          state.workshop.printingTimer = null;
+          state.workshop.printedParts[est.pk] = { name: est.part.name, mat: est.mat.name, massG: est.massG };
+          renderPrintedList();
+          renderBomCatalog();
+          log(`✅ 3D 打印完成并出库: ${est.part.name} (${est.mat.name}, ${est.massG.toFixed(1)}g)`);
+        }
+      }, 85);
+    });
+    $("prStlBtn")?.addEventListener("click", async () => {
+      const pk = $("prPart")?.value || "chassis_frame";
+      if (state.rustOk) await syncModulesToRust();
+      window.open((PRINT_PARTS[pk] || PRINT_PARTS.chassis_frame).stlUrl, "_blank");
+    });
+    $("strictRealMode")?.addEventListener("change", (e) => {
+      state.workshop.strictMode = !!e.target.checked;
+      log(state.workshop.strictMode ? "🔒 已开启真实制作约束模式（需完成打印+装调+检录才可发车）" : "🔓 已关闭真实制作约束模式（自由调试）");
+    });
+    $("autoBuildAllBtn")?.addEventListener("click", () => {
+      ["chassis_frame", "front_scoop", "cam_mount", "motor_bracket"].forEach((k) => {
+        const p = PRINT_PARTS[k];
+        state.workshop.printedParts[k] = { name: p.name, mat: "PETG", massG: p.volCm3 * 0.52 * 1.27 };
+      });
+      state.workshop.stepsDone = [true, true, true, true, true, false];
+      compileStrategy();
+      renderPrintedList();
+      renderBomCatalog();
+      runOfficialInspection();
+    });
+    $("ruleModeSelect")?.addEventListener("change", (e) => {
+      state.referee.mode = e.target.value;
+      state.referee.finished = false;
+      state.referee.penaltySec = 0;
+      state.referee.resetCount = 0;
+      log(`🏆 竞赛规则模式切换为: ${e.target.options[e.target.selectedIndex].text}`);
+    });
+    $("inspectBtn")?.addEventListener("click", runOfficialInspection);
+    $("refResetBtn")?.addEventListener("click", () => {
+      state.referee.penaltySec += 5;
+      state.referee.resetCount += 1;
+      state.robot.x = 0.42; state.robot.z = 1.00; state.robot.yaw = 0; state.robot.v = 0; state.robot.vLat = 0; state.robot.omega = 0;
+      if (state.wasmReady) syncWasmWorld(true);
+      log(`🚩 [官方裁判] 已执行人工复位至出发区（累计第 ${state.referee.resetCount} 次，罚时 +5s，总罚时 +${state.referee.penaltySec}s）`);
+    });
+
+    renderBomCatalog();
+    calcSliceEstimate();
+    renderPrintedList();
+    renderBuildSteps();
+
+    state.customWheels = generateWheelLayout("symmetric_axles", 4);
+    renderWheelList();
+    if ($("strategyPreset")) $("strategyPreset").value = "c_vision_pid";
+    if ($("codeLang")) $("codeLang").value = "arduino_c";
+    $("codeInput").value = STRATEGIES.c_vision_pid;
+    compileStrategy();
+    initPieces();
+    initWasmPhysics();
+    probeRust();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

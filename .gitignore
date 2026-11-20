@@ -1,0 +1,21 @@
+# Rust build artifacts & local user toolchain paths
+rust-studio/target/
+rust-studio/.cargo/config.toml
+
+# Android build intermediates & compiled APK outputs (distributed via GitHub Releases)
+android-app/build/
+*.apk
+*.idsig
+
+# Windows compiled binaries & release archives (distributed via GitHub Releases)
+*.exe
+*.zip
+dist/
+
+# Python / IDE caches
+__pycache__/
+*.pyc
+.venv/
+.vscode/
+.DS_Store
+Thumbs.db

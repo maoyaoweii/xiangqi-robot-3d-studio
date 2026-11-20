@@ -1,0 +1,19 @@
+[package]
+name = "xiangqi_studio"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "xiangqi_studio"
+path = "src/main.rs"
+
+[[bin]]
+name = "xiangqi_desktop"
+path = "src/bin/xiangqi_desktop.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+xiangqi_core = { path = "../core-model" }
+xiangqi_sim = { path = "../physics-sim" }
+xiangqi_mcp = { path = "../mcp-server" }

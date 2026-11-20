@@ -1,0 +1,14 @@
+# Copy to rust-studio/.cargo/config.toml and adjust paths if cross-compiling or working inside a non-ASCII directory.
+
+[build]
+target = "x86_64-pc-windows-gnu"
+# Recommended ASCII path on Windows if repo path contains non-ASCII characters (GNU windres compatibility):
+# target-dir = "C:/Users/<YOUR_NAME>/.cargo/xiangqi_target"
+
+[target.x86_64-pc-windows-gnu]
+# linker = "C:/Users/<YOUR_NAME>/.rustup/toolchains/stable-x86_64-pc-windows-gnu/lib/rustlib/x86_64-pc-windows-gnu/bin/rust-lld.exe"
+rustflags = ["-C", "link-self-contained=yes"]
+
+[target.aarch64-linux-android]
+# Required only when rebuilding android-app APK via build_apk.ps1:
+# linker = "C:/Users/<YOUR_NAME>/AppData/Local/Android/Sdk/ndk/<NDK_VERSION>/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android34-clang.cmd"

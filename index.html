@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>光电赛道一 · 运动学装配仿真器</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script>
+      if (!new URLSearchParams(window.location.search).has("legacy")) window.location.replace("3d.html");
+    </script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">TRACK 1 / KINEMATICS LAB</div>
+          <h1>光电赛道一 · 运动学装配仿真器</h1>
+          <p class="subtitle">把底盘、电机、轮子和车载模块组合起来，先在屏幕上验证可行性，再去做实体车。</p>
+        </div>
+        <div class="top-actions">
+          <a class="button accent" href="3d.html">进入三维游戏</a>
+          <button class="button ghost" id="loadPresetButton">加载赛道一基准方案</button>
+          <button class="button ghost" id="bestSchemeButton">加载最佳拿棋方案</button>
+          <button class="button ghost" id="clearButton">清空装配</button>
+          <button class="button ghost" id="resetPiecesButton">随机32枚棋子</button>
+          <button class="button accent" id="exportButton">导出配置</button>
+          <button class="button ghost" id="importButton">导入配置</button>
+          <input id="importFile" type="file" accept="application/json" hidden />
+        </div>
+      </header>
+
+      <main class="main-grid">
+        <aside class="panel library-panel">
+          <div class="panel-heading">
+            <div>
+              <div class="eyebrow">BUILD KIT</div>
+              <h2>模块库</h2>
+            </div>
+            <span class="count-badge" id="moduleCount">0</span>
+          </div>
+          <p class="panel-note">点击模块加入车体。右侧可修改参数，单位默认使用 mm、kg、rpm。</p>
+          <div class="module-list" id="moduleLibrary">
+            <button class="module-card" data-module="chassis"><span class="module-icon">▣</span><span><strong>底盘</strong><small>尺寸、质量、轴距</small></span><b>＋</b></button>
+            <button class="module-card" data-module="motor"><span class="module-icon">◉</span><span><strong>电机</strong><small>转速、扭矩、数量</small></span><b>＋</b></button>
+            <button class="module-card" data-module="wheel"><span class="module-icon">◌</span><span><strong>轮子</strong><small>半径、轮型、数量</small></span><b>＋</b></button>
+            <button class="module-card" data-module="controller"><span class="module-icon">⌁</span><span><strong>控制器</strong><small>计算与控制质量</small></span><b>＋</b></button>
+            <button class="module-card" data-module="sensor"><span class="module-icon">◈</span><span><strong>传感器</strong><small>相机、IMU、编码器</small></span><b>＋</b></button>
+            <button class="module-card" data-module="pusher"><span class="module-icon">↦</span><span><strong>推送器</strong><small>赛道一贴地推进</small></span><b>＋</b></button>
+            <button class="module-card" data-module="collector"><span class="module-icon">⌁</span><span><strong>收集器</strong><small>滚轮、收集斗等多种装置</small></span><b>＋</b></button>
+            <button class="module-card" data-module="battery"><span class="module-icon">▰</span><span><strong>电池</strong><small>电压、容量、质量</small></span><b>＋</b></button>
+            <button class="module-card" data-module="safety"><span class="module-icon">⚠</span><span><strong>安全模块</strong><small>急停、保险丝、队标</small></span><b>＋</b></button>
+          </div>
+          <div class="library-tip">
+            <span class="tip-dot"></span>
+            <span>建议先加载基准方案，再删除或替换模块进行对比。</span>
+          </div>
+        </aside>
+
+        <section class="workspace-panel">
+          <div class="sim-toolbar">
+            <div class="toolbar-title">
+              <span class="live-dot" id="liveDot"></span>
+              <strong id="simStatus">已暂停</strong>
+              <span class="muted">车体运动学场</span>
+            </div>
+            <div class="toolbar-actions">
+              <button class="button accent" id="runButton">▶ 运行</button>
+              <button class="button ghost" id="resetButton">↺ 重置</button>
+            </div>
+          </div>
+
+          <div class="canvas-shell">
+            <canvas id="simCanvas" width="1100" height="640" aria-label="车体运动仿真画布，可拖动棋子"></canvas>
+            <div class="canvas-hud hud-tl"><span class="hud-label">场地</span><strong>3000 × 2000 mm</strong></div>
+            <div class="canvas-hud hud-tr"><span class="hud-label">控制提示</span><strong>↑↓ 前后 · ←→ 转向 · A/D 横移 · 拖动棋子</strong></div>
+            <div class="canvas-hud hud-bl"><span class="hud-label">坐标</span><strong id="poseHud">x 0 · y 0 · θ 0°</strong></div>
+            <div class="canvas-hud hud-br"><span class="hud-label">轨迹</span><strong id="traceHud">0 points</strong></div>
+          </div>
+
+          <section class="camera-dock">
+            <div class="camera-heading">
+              <div><div class="eyebrow">CAMERA / YOLO ADAPTER</div><h3>车载摄像头视口</h3></div>
+              <div class="camera-actions"><select id="cameraSourceMode" title="画面来源"><option value="sim">仿真相机</option><option value="real">真实摄像头</option></select><select id="yoloAdapterMode" title="识别适配器"><option value="mock">本地模拟识别</option><option value="http">HTTP YOLO 桥接</option></select><button class="button ghost" id="startCameraButton">启动真实摄像头</button><button class="button ghost" id="stopCameraButton" disabled>停止摄像头</button><button class="button ghost" id="captureFrameButton">捕获当前帧</button></div>
+            </div>
+            <div class="camera-grid">
+              <canvas id="cameraCanvas" width="560" height="230" aria-label="车载摄像头视口"></canvas>
+              <video id="cameraVideo" autoplay playsinline muted hidden></video>
+              <div class="camera-results"><label for="yoloEndpoint">HTTP 地址（捕获时调用）</label><input id="yoloEndpoint" type="url" placeholder="http://127.0.0.1:8765/predict" disabled><div id="cameraStatus" class="camera-status">装配摄像头后可捕获帧</div><div id="planStatus" class="camera-status">自动策略等待视觉目标</div><div id="detectionList" class="detection-list"><span class="empty-state">暂无识别结果</span></div></div>
+            </div>
+          </section>
+
+          <div class="control-deck">
+            <div class="control-group">
+              <label for="throttleControl">前进 <output id="throttleValue">0.45</output></label>
+              <input id="throttleControl" type="range" min="-1" max="1" step="0.01" value="0.45" />
+            </div>
+            <div class="control-group">
+              <label for="steerControl">转向 <output id="steerValue">0.00</output></label>
+              <input id="steerControl" type="range" min="-1" max="1" step="0.01" value="0" />
+            </div>
+            <div class="control-group" id="strafeGroup">
+              <label for="strafeControl">横移 <output id="strafeValue">0.00</output></label>
+              <input id="strafeControl" type="range" min="-1" max="1" step="0.01" value="0" />
+            </div>
+            <div class="select-group">
+              <label for="driveMode">运动模型</label>
+              <select id="driveMode">
+                <option value="diff">差速 / 两轮驱动</option>
+                <option value="mecanum">麦克纳姆 / 全向</option>
+                <option value="omni">全向轮</option>
+              </select>
+            </div>
+            <div class="select-group">
+              <label for="strategyMode">取子策略</label>
+              <select id="strategyMode">
+                <option value="value_first">高分优先（推荐）</option>
+                <option value="nearest">最近优先</option>
+                <option value="sweep">横向扫掠</option>
+              </select>
+            </div>
+            <div class="control-group compact">
+              <label for="timeScaleControl">时间倍率 <output id="timeScaleValue">1.0×</output></label>
+              <input id="timeScaleControl" type="range" min="0.25" max="3" step="0.25" value="1" />
+            </div>
+            <label class="strategy-toggle" for="autoStrategyControl"><input id="autoStrategyControl" type="checkbox" /> 自动取子：按策略规划</label>
+          </div>
+          <div class="workspace-footnote">这是平面刚体运动学演示：不计算碰撞动力学、摩擦变形或电机电流。用于先验验证装配尺寸、速度和控制逻辑。</div>
+        </section>
+
+        <aside class="panel inspector-panel">
+          <section class="panel-section assembly-section">
+            <div class="panel-heading compact-heading">
+              <div>
+                <div class="eyebrow">ASSEMBLY</div>
+                <h2>装配清单</h2>
+              </div>
+              <span class="count-badge" id="assemblyCount">0</span>
+            </div>
+            <div id="assemblyList" class="assembly-list"></div>
+          </section>
+
+          <section class="panel-section inspector-section">
+            <div class="panel-heading compact-heading">
+              <div>
+                <div class="eyebrow">INSPECTOR</div>
+                <h2>参数检查</h2>
+              </div>
+            </div>
+            <div id="inspector" class="inspector-content"><p class="empty-state">选择一个模块开始编辑。</p></div>
+          </section>
+
+          <section class="panel-section recommendation-section">
+            <div class="panel-heading compact-heading">
+              <div>
+                <div class="eyebrow">RECOMMENDED BUILD</div>
+                <h2>最佳拿棋方案</h2>
+              </div>
+            </div>
+            <div id="bestSchemeNote" class="recommendation-copy">270×240×100 mm 轻量底盘 · 双减速编码电机 · 185 mm 宽被动柔性推板 · 前置相机 + IMU + 编码器 · 约 1.93 kg。目标是贴地、低速、高扭矩地把高分棋子推入己方球门区。</div>
+          </section>
+
+          <section class="panel-section telemetry-section">
+            <div class="panel-heading compact-heading">
+              <div>
+                <div class="eyebrow">TELEMETRY</div>
+                <h2>实时遥测</h2>
+              </div>
+              <span class="status-pill" id="compliancePill">待装配</span>
+            </div>
+            <div class="telemetry-grid">
+              <div><span>总质量</span><strong id="massTelemetry">0.00 kg</strong></div>
+              <div><span>车体尺寸</span><strong id="sizeTelemetry">—</strong></div>
+              <div><span>估算极速</span><strong id="speedTelemetry">0 mm/s</strong></div>
+              <div><span>当前线速度</span><strong id="velocityTelemetry">0 mm/s</strong></div>
+              <div><span>当前角速度</span><strong id="omegaTelemetry">0 rad/s</strong></div>
+              <div><span>己方得分</span><strong id="scoreTelemetry">0 / 45 分</strong></div>
+              <div><span>完整入区</span><strong id="pieceTelemetry">0 枚入区</strong></div>
+              <div><span>仿真时间</span><strong id="timeTelemetry">0.0 s</strong></div>
+            </div>
+            <div class="compliance-note" id="complianceNote">加载模块后会检查赛道一的尺寸、质量和自主运行基线。</div>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script src="app.js" defer></script>
+  </body>
+</html>
