@@ -445,7 +445,9 @@
         <div class="tab-pane active" id="tab-modules">
           <div class="row-actions">
             <select id="mModelPreset" class="btn" style="flex:1;">
-              <option value="">✨ 快速切换整车 3D 模型预设 (8套)...</option>
+              <option value="">✨ 快速切换整车 3D 模型预设 (含两套实战旗舰方案)...</option>
+              <option value="flagship_mecanum_nano" selected>🏆 [你的方案] 四驱麦轮+Jetson Nano+STM32+HWT101+U型三连推斗</option>
+              <option value="flagship_diff_k230">🥇 [推荐轻量化] 两轮差速+双万向球+K230+BMI088+U型三连推斗</option>
               <option value="std_mecanum">🏁 标准竞赛麦轮推斗车</option>
               <option value="roller_blitz">⚡ 高速滚筒三连收割机</option>
               <option value="tank_conveyor">🛡️ 重装履带传送带战车 (4枚连运)</option>
@@ -622,10 +624,20 @@
             </div>
             <div class="field"><label>传感光电套件</label>
               <select id="mSensorSuite">
+                <option value="tof4_ir" selected>4路 VL53L1X ToF(≤1mW) + 斗内红外</option>
                 <option value="laser3">3路安全激光 + 单目</option>
                 <option value="lidar360">360°顶部旋转激光雷达</option>
                 <option value="stereo_cam">双目立体视觉云台</option>
                 <option value="omni_ir">5路宽域激光 + 红外阵</option>
+              </select>
+            </div>
+            <div class="field"><label>陀螺仪 / IMU 选型</label>
+              <select id="mImuType">
+                <option value="hwt101" selected>维特 HWT101CT (&lt;0.2°/2min)</option>
+                <option value="bmi088">Bosch BMI088 (强抗麦轮震动)</option>
+                <option value="icm42688">TDK ICM-42688-P (低底噪)</option>
+                <option value="imu660ra">逐飞 IMU660RA (消费级6轴)</option>
+                <option value="mpu6050">普通 MPU6050 (明显温漂)</option>
               </select>
             </div>
             <div class="field"><label>动力电池方案</label>
@@ -719,8 +731,8 @@
           <div class="section-title">④ 全国光电设计竞赛 · 官方规则裁判与检录</div>
           <div class="row-actions">
             <select id="ruleModeSelect" class="btn" style="flex:1;">
-              <option value="official_180">🏆 官方标准赛 (180s · 误推黑棋-3分 · 300mm限框)</option>
-              <option value="official_120">⏱️ 官方冲刺赛 (120s · 误推黑棋-3分 · 300mm限框)</option>
+              <option value="official_120" selected>🏆 第十五届官方常规赛 (120s · 禁止夹吸 · &lt;2.5kg · 终场计分)</option>
+              <option value="golden_60">⚡ 官方 60s 金球加赛 (先有效进1枚己方棋即获胜)</option>
               <option value="free">🧪 自由调试模式 (无限时 · 不锁发车)</option>
             </select>
             <button class="btn primary" id="inspectBtn">📋 官方检录</button>
@@ -833,7 +845,8 @@
           <div class="form-grid">
             <div class="field"><label>仿真主控板型号</label>
               <select id="boardType">
-                <option value="K230_LINUX">CanMV K230 视觉主控</option>
+                <option value="JETSON_NANO_STM32" selected>Jetson Nano + STM32F407 双核</option>
+                <option value="K230_LINUX">CanMV K230 + STM32 视觉主控</option>
                 <option value="STM32_F4">STM32F407 实时电控板</option>
                 <option value="ESP32_S3">ESP32-S3 双核全向主控</option>
                 <option value="ARDUINO_MEGA">Arduino Mega 2560</option>
@@ -842,8 +855,8 @@
             <div class="field"><label>编程语言兼容模式</label>
               <select id="codeLang">
                 <option value="arduino_c">C / Arduino (setup / loop)</option>
-                <option value="micropython">Python / K230 MicroPython</option>
-                <option value="js_sdk">JavaScript 硬件 SDK / decide</option>
+                <option value="micropython">Python / K230 / Jetson</option>
+                <option value="js_sdk" selected>JavaScript 硬件 SDK / decide</option>
               </select>
             </div>
             <div class="field"><label>主控频率 (Hz)</label>
@@ -852,6 +865,8 @@
           </div>
           <div class="row-actions">
             <select id="strategyPreset" class="btn" style="flex:1;">
+              <option value="mecanum_adrc_pro" selected>[旗舰实战] 麦轮场地系+ADRC航向+三槽投递+偷家+脱困</option>
+              <option value="golden_goal_blitz">[金球加赛] 60s 极速单球绝杀固件</option>
               <option value="c_vision_pid">[C / Arduino] 麦轮逆解+视觉PID追子固件</option>
               <option value="py_k230_vision">[Python / K230] 视觉识别+PID闭环收子固件</option>
               <option value="c_pwm_circle">[C / Arduino] 逐轮PWM差速/麦轮直驱测试</option>
@@ -867,6 +882,15 @@
           </div>
           <div class="mono" id="boardStatus" style="color:var(--mint);">仿真板就绪：等待编译烧录...</div>
           <div class="mono" id="boardTeleHud" style="font-size:11px;color:#5c7279;padding:4px 8px;background:#eef5f7;border-radius:6px;border:1px solid #d7e4e8;">MCU: 0 ticks · 模式: 速度闭环 · 总线: 11.1V · PWM: [--]</div>
+          <div class="row-actions">
+            <select id="stepTestMode" class="btn" style="flex:1;">
+              <option value="fwd">📈 阶跃测误差: 直线前进 0.8 m/s (1.2s)</option>
+              <option value="lat">📈 阶跃测误差: 麦轮纯横移 0.5 m/s (1.2s)</option>
+              <option value="yaw">📈 阶跃测误差: 原地转向 90° (1.2s)</option>
+            </select>
+            <button class="btn gold" id="runStepTestBtn">🧪 运行阶跃测误差</button>
+          </div>
+          <div class="mono" id="stepTestResult" style="font-size:11px;padding:4px 8px;background:#0e1e24;color:#8cf7d8;border-radius:8px;">阶跃测误差就绪：点击「运行阶跃测误差」在 WASM 内核中实测上升时间、超调、静差与当前陀螺仪漂移</div>
           <textarea class="code-area" id="codeInput" style="min-height:175px;"></textarea>
           <div class="log-box" id="serialMonitor" style="max-height:95px;background:#0e1e24;color:#8cf7d8;font-family:ui-monospace,Consolas,monospace;">[串口监视器] 就绪 (支持 Serial.println / print / board.log)</div>
           <div class="log-box" id="mcpOut">MCP 接口就绪：stdio 命令 XiangqiMcpServer.exe 或 /api/mcp/call</div>
@@ -880,9 +904,153 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const FIELD_W = 3.0, FIELD_D = 2.0, PIECE_R = 0.0335, PIECE_H = 0.017;
-    const GOAL = { minX: 0.05, maxX: 0.55, minZ: 0.65, maxZ: 1.35 };
+    // 第十五届官方细则：球门区 400×600 mm (无实体门柱)，中央堆放区 600×600 mm
+    const GOAL = { minX: 0.0, maxX: 0.40, minZ: 0.70, maxZ: 1.30 };
+    const ENEMY_GOAL = { minX: 2.60, maxX: 3.00, minZ: 0.70, maxZ: 1.30 };
 
     const STRATEGIES = {
+      mecanum_adrc_pro: `// 🏆 旗舰实战固件：麦轮场地坐标系 + 线性ADRC航向锁死 + 价值密度三槽投递 + 终局偷家 + 卡死自救
+let slotIdx = 0, retractTicks = 0, stuckTicks = 0, rescueTicks = 0;
+let adrcZ1 = 0, adrcZ2 = 0, adrcZ3 = 0; // 线性扩张状态观测器 (LESO)
+const GOAL_SLOTS_Z = [0.84, 1.00, 1.16]; // 上/中/下三槽分放，避免叠压不计分
+
+function setup(board) {
+  board.calibrateIMU();
+  board.log("🏆 [Nano+STM32] 麦轮 ADRC + 三阶段竞赛固件启动 (HWT101 + 4xToF + 红外对管)");
+}
+
+function normAng(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
+
+// 场地坐标系速度 -> 车体系 (vFwd, vLat) + 线性 ADRC 航向角速度闭环
+function driveFieldOriented(board, vxW, vzW, targetYaw, dt) {
+  const imu = board.getIMU();
+  const y = imu.yaw;
+  const err = normAng(targetYaw - y);
+  // 简化二阶线性 ADRC 扰动观测器，抵抗推 2~3 枚棋子的偏心阻力矩
+  const wo = 18.0, b0 = 6.5;
+  const eObs = normAng(y - adrcZ1);
+  adrcZ1 = normAng(adrcZ1 + (adrcZ2 + 3 * wo * eObs) * dt);
+  adrcZ2 += (adrcZ3 + 3 * wo * wo * eObs + b0 * imu.omega) * dt;
+  adrcZ3 += (wo * wo * wo * eObs) * dt;
+  const u0 = 4.2 * err - 0.38 * imu.omega;
+  let omega = u0 - adrcZ3 / b0;
+  const hasPiece = board.readPocketIR() > 0;
+  const maxW = hasPiece ? 1.85 : 3.6;
+  omega = Math.max(-maxW, Math.min(maxW, omega));
+  const c = Math.cos(y), s = Math.sin(y);
+  const vFwd = c * vxW + s * vzW;
+  const vLat = -s * vxW + c * vzW;
+  board.setVelocity(vFwd, omega, vLat);
+}
+
+function loop(board) {
+  const dt = 1.0 / (board.hz || 50);
+  const imu = board.getIMU();
+  const tof = board.readToF4();
+  const hasPiece = board.readPocketIR() > 0;
+  const t = board.getTimeSec();
+
+  // 1. 单车卡死自救 (编码器速度异常 > 0.8s 自动后退 + 侧移脱困)
+  if (rescueTicks > 0) {
+    rescueTicks--;
+    board.setVelocity(-0.55, 1.4, 0.35);
+    return;
+  }
+  if (Math.hypot(imu.vFwd, imu.vLat) < 0.035 && t > 1.0) stuckTicks++;
+  else stuckTicks = 0;
+  if (stuckTicks > Math.round(0.8 * (board.hz || 50))) {
+    stuckTicks = 0; rescueTicks = Math.round(0.55 * (board.hz || 50));
+    board.log("⚠️ [卡死自救] 触发后退+横移脱困");
+    return;
+  }
+
+  // 2. 投递完后纯直线后退 130mm 脱钩，防止转向把已入区棋子带出压线
+  if (retractTicks > 0) {
+    retractTicks--;
+    board.setVelocity(-0.62, 0.0, 0.0);
+    return;
+  }
+
+  // 3. 终局偷家模式 (最后 25s 且我方视野已无高分红棋 -> 冲向对方球门清门)
+  const objs = board.camera_detect();
+  const highRed = objs.filter((p) => p.value >= 3);
+  if (t > 95 && highRed.length === 0 && !hasPiece) {
+    const dx = 2.75 - imu.x, dz = 1.0 - imu.z;
+    const d = Math.hypot(dx, dz) || 1;
+    driveFieldOriented(board, (dx / d) * 1.05, (dz / d) * 0.9, 0.0, dt);
+    return;
+  }
+
+  // 4. 推斗内有棋子：直奔当前投递槽 (上/中/下轮换防叠压)，推入深度 > 160mm 后脱钩
+  const slotZ = GOAL_SLOTS_Z[slotIdx % 3];
+  if (hasPiece) {
+    const gx = 0.22, gz = slotZ;
+    const dx = gx - imu.x, dz = gz - imu.z;
+    const d = Math.hypot(dx, dz);
+    if (imu.x < 0.28 && Math.abs(imu.z - slotZ) < 0.16) {
+      slotIdx++;
+      retractTicks = Math.round(0.32 * (board.hz || 50));
+      board.log("✅ 完成第 " + slotIdx + " 槽投递，直线后退脱钩");
+      return;
+    }
+    const spd = Math.min(0.92, Math.max(0.45, d * 1.6));
+    driveFieldOriented(board, (dx / (d || 1)) * spd, (dz / (d || 1)) * spd * 0.72, Math.PI, dt);
+    return;
+  }
+
+  // 5. 价值密度选目标 + 麦轮蟹行绕后 160mm 切入 (推斗提前锁死指向己方球门)
+  const target = objs[0];
+  if (!target) {
+    // 巡检中央区，绝不原地死转
+    const tx = imu.x < 1.3 ? 1.55 : 0.95;
+    driveFieldOriented(board, (tx - imu.x) * 0.8, (1.0 - imu.z) * 0.6, normAng(imu.yaw + 0.5), dt);
+    return;
+  }
+  const gx = 0.22, gz = slotZ;
+  const gdx = gx - target.x, gdz = gz - target.z;
+  const gl = Math.hypot(gdx, gdz) || 1;
+  // 绕到棋子背向球门 160mm 处切入
+  const behindX = target.x - (gdx / gl) * 0.17;
+  const behindZ = target.z - (gdz / gl) * 0.17;
+  const dToBehind = Math.hypot(behindX - imu.x, behindZ - imu.z);
+  const pushYaw = Math.atan2(gdz, gdx);
+  const aimX = (dToBehind < 0.12) ? gx : behindX;
+  const aimZ = (dToBehind < 0.12) ? gz : behindZ;
+  const ax = aimX - imu.x, az = aimZ - imu.z;
+  const al = Math.hypot(ax, az) || 1;
+  const spd = Math.min(1.05, Math.max(0.42, al * 2.4));
+  // 4路 ToF 贴墙软避障
+  let avoidX = 0, avoidZ = 0;
+  if (tof.front < 0.16) avoidX -= 0.25 * Math.cos(imu.yaw);
+  if (tof.left < 0.14) avoidZ += 0.22;
+  if (tof.right < 0.14) avoidZ -= 0.22;
+  driveFieldOriented(board, (ax / al) * spd + avoidX, (az / al) * spd * 0.8 + avoidZ, pushYaw, dt);
+}`,
+      golden_goal_blitz: `// ⚡ 60秒金球加赛模式：不计分值，极速锁定离己方球门最近的 1 枚己方棋子一击绝杀
+function setup(board) {
+  board.calibrateIMU();
+  board.log("⚡ [金球加赛模式] 忽略分值，极速直奔最近己方棋子!");
+}
+function loop(board) {
+  const imu = board.getIMU();
+  const objs = board.camera_detect().slice().sort((a, b) => a.x - b.x);
+  const t = objs[0];
+  if (!t) { board.setVelocity(0.55, 1.5, 0); return; }
+  const gdx = 0.22 - t.x, gdz = 1.0 - t.z;
+  const gl = Math.hypot(gdx, gdz) || 1;
+  const aligned = imu.x > t.x + 0.05 && Math.abs(imu.z - t.z) < 0.11;
+  const aimX = aligned ? 0.18 : t.x - (gdx / gl) * 0.16;
+  const aimZ = aligned ? 1.0 : t.z - (gdz / gl) * 0.16;
+  const desired = Math.atan2(aimZ - imu.z, aimX - imu.x);
+  let diff = desired - imu.yaw;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  board.setVelocity(Math.abs(diff) > 0.9 ? 0.25 : 1.05, Math.max(-3.6, Math.min(3.6, diff * 3.5)), 0);
+}`,
       c_vision_pid: `// Arduino / STM32 C++ 仿真板固件 (支持 setup / loop + 逐轮PWM)
 #define KP_TURN 2.6
 float targetDist = 0.0;
@@ -1033,13 +1201,14 @@ function loop(board) {
         strictMode: false,
       },
       referee: {
-        mode: "official_180",
-        limitSec: 180,
+        mode: "official_120",
+        limitSec: 120,
         penaltySec: 0,
         resetCount: 0,
         finished: false,
         inspectedOk: false,
       },
+      imuSim: { driftRad: 0, biasRadS: 0, type: "hwt101" },
       board: {
         type: "K230_LINUX",
         lang: "arduino_c",
@@ -1356,6 +1525,7 @@ function loop(board) {
       const layout = $("mLayoutMode")?.value || "grid";
       const redChars = ["帅","仕","仕","相","相","车","车","马","马","炮","炮","兵","兵","兵","兵","兵"];
       const blkChars = ["将","士","士","象","象","车","车","马","马","炮","炮","卒","卒","卒","卒","卒"];
+      const pieceVals = [10, 2, 2, 2, 2, 5, 5, 3, 3, 3, 3, 1, 1, 1, 1, 1];
       for (let i = 0; i < 32; i++) {
         const isRed = i < 16;
         let x, z;
@@ -1380,7 +1550,7 @@ function loop(board) {
         }
         state.pieces.push({
           id: i, isRed, label: isRed ? redChars[i] : blkChars[i - 16],
-          value: isRed ? (i === 0 ? 5 : 2) : 0,
+          value: isRed ? pieceVals[i] : 0,
           x, z, vx: 0, vz: 0, scored: false, held: false
         });
       }
@@ -1659,14 +1829,11 @@ function loop(board) {
         gl.uniformMatrix4fv(loc.uVP, false, vp);
         gl.uniform3fv(loc.uEyePos, eyePos);
 
-        // 3D 比赛场地地板 (带 250mm 网格纹理) + 球门立体柱 + 300mm 围挡
+        // 3D 比赛场地地板 (第十五届官方细则：400×600mm 齐平球门区无实体门柱 + 600×600mm 中央堆放区 + 300mm 围挡)
         drawMesh(boxMesh, M4.trs(FIELD_W*0.5, -0.01, FIELD_D*0.5, 0, FIELD_W, 0.02, FIELD_D), [1, 1, 1, 1], floorTex);
-        drawMesh(boxMesh, M4.trs(0.30, 0.002, 1.0, 0, 0.50, 0.004, 0.70), [0.85, 0.30, 0.36, 0.85]);
-        drawMesh(boxMesh, M4.trs(2.70, 0.002, 1.0, 0, 0.50, 0.004, 0.70), [0.24, 0.48, 0.82, 0.85]);
-        for (const gz of [0.65, 1.35]) {
-          drawMesh(boxMesh, M4.trs(0.55, 0.06, gz, 0, 0.022, 0.12, 0.022), [0.90, 0.32, 0.38, 1]);
-          drawMesh(boxMesh, M4.trs(2.45, 0.06, gz, 0, 0.022, 0.12, 0.022), [0.26, 0.52, 0.88, 1]);
-        }
+        drawMesh(boxMesh, M4.trs(0.20, 0.002, 1.0, 0, 0.40, 0.004, 0.60), [0.85, 0.30, 0.36, 0.85]);
+        drawMesh(boxMesh, M4.trs(2.80, 0.002, 1.0, 0, 0.40, 0.004, 0.60), [0.24, 0.48, 0.82, 0.85]);
+        drawMesh(boxMesh, M4.trs(1.50, 0.0015, 1.0, 0, 0.60, 0.003, 0.60), [0.92, 0.78, 0.35, 0.26]);
         drawMesh(boxMesh, M4.trs(FIELD_W*0.5, 0.15, -0.015, 0, FIELD_W, 0.30, 0.03), [0.34, 0.42, 0.45, 1]);
         drawMesh(boxMesh, M4.trs(FIELD_W*0.5, 0.15, FIELD_D+0.015, 0, FIELD_W, 0.30, 0.03), [0.34, 0.42, 0.45, 1]);
         drawMesh(boxMesh, M4.trs(-0.015, 0.15, FIELD_D*0.5, 0, 0.03, 0.30, FIELD_D), [0.34, 0.42, 0.45, 1]);
@@ -1878,6 +2045,18 @@ function loop(board) {
             for (let k = 0; k < 8; k++) {
               const a = (k / 8) * Math.PI * 2 + r.mechPhase * 0.25;
               drawMesh(boxMesh, M4.mul(baseM, M4.trs(Math.cos(a)*0.34, topY+0.048, Math.sin(a)*0.34, -a, 0.68, 0.0022, 0.0022)), [0.18, 0.96, 0.58, 0.45]);
+            }
+          } else if (sensorSuite === "tof4_ir") {
+            // 4路 VL53L1X I类安全激光 (前/后/左/右) + 推斗背板红外对管
+            const tofDirs = [
+              [cl*0.48, 0, 0],
+              [-cl*0.48, 0, Math.PI],
+              [0, -cw*0.48, -Math.PI*0.5],
+              [0, cw*0.48, Math.PI*0.5],
+            ];
+            for (const [tx, tz, ang] of tofDirs) {
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs(tx, deckY+0.022, tz, -ang, 0.012, 0.012, 0.018)), [0.48, 0.28, 0.76, 1]);
+              drawMesh(boxMesh, M4.mul(baseM, M4.trs(tx + Math.cos(ang)*0.24, deckY+0.022, tz + Math.sin(ang)*0.24, -ang, 0.48, 0.0024, 0.0024)), [0.96, 0.28, 0.32, 0.55]);
             }
           } else {
             const rays = sensorSuite === "omni_ir" ? [-0.52, -0.26, 0, 0.26, 0.52] : [-0.26, 0, 0.26];
@@ -2205,6 +2384,7 @@ function loop(board) {
     }
 
     function stepPhysics(dt) {
+      stepImuDrift(dt);
       const manualActive = state.keys.w || state.keys.s || state.keys.a || state.keys.d || state.keys.q || state.keys.e;
       const rearMod = $("mRearMod")?.value || "none";
       const ws = state.customWheels || [];
@@ -2532,34 +2712,35 @@ function loop(board) {
       }
 
       const redScore = state.pieces.filter((p) => p.scored && p.isRed).reduce((a, p) => a + p.value, 0);
-      const wrongCnt = state.pieces.filter((p) => !p.isRed && !p.held && p.x >= GOAL.minX && p.x <= GOAL.maxX && p.z >= GOAL.minZ && p.z <= GOAL.maxZ).length;
-      const penPts = wrongCnt * 3;
-      const netScore = redScore - penPts;
+      const trappedEnemy = state.pieces.filter((p) => !p.isRed && !p.held && p.x >= GOAL.minX && p.x <= GOAL.maxX && p.z >= GOAL.minZ && p.z <= GOAL.maxZ).length;
+      const netScore = redScore; // 第十五届细则 5.1：终场己方球门内己方棋子分值计分，对方棋子在己门不扣分
       const heldNow = state.pieces.filter((p) => p.held).length;
       const spdNow = Math.hypot(r.v, r.vLat || 0);
       const effTime = state.time + (state.referee.penaltySec || 0);
-      const limitSec = state.referee.mode === "official_180" ? 180 : (state.referee.mode === "official_120" ? 120 : 0);
+      const limitSec = state.referee.mode === "official_120" ? 120 : (state.referee.mode === "golden_60" ? 60 : 0);
       const remSec = limitSec > 0 ? Math.max(0, limitSec - effTime) : null;
+      const goldenWin = state.referee.mode === "golden_60" && redScore > 0;
       if (state.running && limitSec > 0 && !state.referee.finished) {
-        if (remSec <= 0 || redScore >= 45) {
+        if (remSec <= 0 || redScore >= 45 || goldenWin) {
           state.referee.finished = true;
           state.running = false;
-          if ($("runBtn")) $("runBtn").textContent = "▶ 运行";
-          const reason = redScore >= 45 ? "全收红棋提前完赛!" : "比赛时间到!";
-          log(`🏆 [官方裁判] ${reason} 净得分 ${netScore} (红棋+${redScore}, 误推黑棋${wrongCnt}枚-${penPts}) · 有效用时 ${effTime.toFixed(1)}s`);
+          if ($("runBtn")) $("runBtn").textContent = "▶ 自动运行";
+          const reason = goldenWin ? "⚡ 金球加赛率先有效进球获胜!" : (redScore >= 45 ? "全收红棋提前完赛!" : "120s 常规赛时间到!");
+          log(`🏆 [第十五届裁判] ${reason} 得分 ${netScore}/45 (困住敌棋 ${trappedEnemy}枚) · 用时 ${effTime.toFixed(1)}s · 整车 ${(state.resolved?.total_mass ?? 1.5).toFixed(2)}kg`);
           saveMatchRecord({
-            net: netScore, red: redScore, wrong: wrongCnt, pen: state.referee.penaltySec, time: effTime,
-            mode: state.referee.mode === "official_120" ? "冲刺赛" : "标准赛",
-            board: $("boardType")?.value || "K230_LINUX",
+            net: netScore, red: redScore, wrong: trappedEnemy, pen: state.referee.penaltySec, time: effTime,
+            mode: state.referee.mode === "golden_60" ? "金球加赛" : "120s常规赛",
+            board: $("boardType")?.value || "JETSON_NANO_STM32",
             date: new Date().toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }),
           });
         }
       }
-      $("tScore").textContent = wrongCnt > 0 ? `${netScore} (${redScore}-${penPts})` : `${netScore} / 45`;
+      $("tScore").textContent = `${netScore} / 45`;
       $("tTime").textContent = remSec !== null ? `${heldNow}枚 · 余${remSec.toFixed(1)}s` : `${heldNow}枚 · ${effTime.toFixed(1)}s`;
       if ($("refScoreboard")) {
         const tag = state.referee.finished ? "【已完赛】" : (limitSec > 0 ? `剩余 ${remSec.toFixed(1)}s` : `自由模式 ${effTime.toFixed(1)}s`);
-        $("refScoreboard").textContent = `官方计分板: 净得分 ${netScore} (红棋 +${redScore} · 误推黑棋 ${wrongCnt}枚 -${penPts} · 复位罚时 +${state.referee.penaltySec}s) · ${tag}`;
+        const imuDriftDeg = ((state.imuSim?.driftRad || 0) * 180 / Math.PI).toFixed(2);
+        $("refScoreboard").textContent = `第十五届计分板: 有效得分 ${netScore}/45 · 门内困敌棋 ${trappedEnemy}枚 · IMU漂移 ${imuDriftDeg}° · ${tag}`;
       }
       if ($("fpHud")) {
         const wt = state.wasmTele;
@@ -2580,13 +2761,10 @@ function loop(board) {
       box.scrollTop = box.scrollHeight;
     }
 
-    function readLaserRay(rayIdx) {
-      const suite = $("mSensorSuite")?.value || "laser3";
-      const angles = suite === "omni_ir" ? [-0.52, -0.26, 0, 0.26, 0.52] : [-0.26, 0, 0.26];
-      const relAng = angles[Math.max(0, Math.min(angles.length - 1, rayIdx | 0))] || 0;
+    function castToFRay(relAng, maxR = 2.5) {
       const ang = state.robot.yaw + relAng;
       const dx = Math.cos(ang), dz = Math.sin(ang);
-      let minD = 2.5;
+      let minD = maxR;
       if (dx > 1e-4) minD = Math.min(minD, (FIELD_W - state.robot.x) / dx);
       if (dx < -1e-4) minD = Math.min(minD, (0.0 - state.robot.x) / dx);
       if (dz > 1e-4) minD = Math.min(minD, (FIELD_D - state.robot.z) / dz);
@@ -2600,7 +2778,50 @@ function loop(board) {
           if (perp < PIECE_R + 0.015) minD = Math.min(minD, proj - PIECE_R);
         }
       }
-      return Math.max(0.02, minD);
+      return Math.max(0.02, minD + (Math.random() - 0.5) * 0.004);
+    }
+
+    function readLaserRay(rayIdx) {
+      const suite = $("mSensorSuite")?.value || "tof4_ir";
+      if (suite === "tof4_ir") {
+        const dirs = [0, Math.PI, -Math.PI * 0.5, Math.PI * 0.5];
+        return castToFRay(dirs[Math.max(0, Math.min(3, rayIdx | 0))], 3.5);
+      }
+      const angles = suite === "omni_ir" ? [-0.52, -0.26, 0, 0.26, 0.52] : [-0.26, 0, 0.26];
+      const relAng = angles[Math.max(0, Math.min(angles.length - 1, rayIdx | 0))] || 0;
+      return castToFRay(relAng, 2.5);
+    }
+
+    function readToF4() {
+      return {
+        front: castToFRay(0, 3.5),
+        back: castToFRay(Math.PI, 3.5),
+        left: castToFRay(-Math.PI * 0.5, 3.5),
+        right: castToFRay(Math.PI * 0.5, 3.5),
+      };
+    }
+
+    function readPocketIR() {
+      const fx = Math.cos(state.robot.yaw), fz = Math.sin(state.robot.yaw);
+      const sw = (Number($("mScoopW")?.value) || 220) / 1000;
+      for (const p of state.pieces) {
+        if (p.held) return 1;
+        const dx = p.x - state.robot.x, dz = p.z - state.robot.z;
+        const fwd = dx * fx + dz * fz;
+        const lat = Math.abs(-dx * fz + dz * fx);
+        if (fwd > 0.07 && fwd < 0.22 && lat < sw * 0.54) return 1;
+      }
+      return 0;
+    }
+
+    function stepImuDrift(dt) {
+      const imuType = $("mImuType")?.value || "hwt101";
+      const driftDegPerS = { hwt101: 0.0015, bmi088: 0.004, icm42688: 0.006, imu660ra: 0.018, mpu6050: 0.055 }[imuType] ?? 0.004;
+      const isMecanum = ($("mTireType")?.value || "mecanum") === "mecanum";
+      const spd = Math.hypot(state.robot.v || 0, state.robot.vLat || 0);
+      const vibGain = (imuType === "hwt101" || imuType === "bmi088") ? 1.15 : (isMecanum ? (1.0 + spd * 1.4) : 1.0);
+      state.imuSim.type = imuType;
+      state.imuSim.driftRad += (driftDegPerS * Math.PI / 180) * vibGain * dt;
     }
 
     function updateBoardTeleHud() {
@@ -2673,18 +2894,26 @@ function loop(board) {
         getWheelRPS: (i = 0) => Number((b.wheelRPS[i | 0] || 0).toFixed(3)),
         getHeldCount: () => state.pieces.filter((p) => p.held).length,
         getMaxHold: () => ({ none: 0, roller: 4, conveyor: 5, funnel_gate: 5, pincer_claw: 2, gripper: 2, mag_arm: 2, vacuum: 2, forklift: 2, u_scoop: 1, plow_v: 0, brush: 0 }[$("mDeviceKind")?.value || "u_scoop"] ?? 1),
-        getGoalPos: () => ({ x: 0.25, z: 1.0 }),
+        getGoalPos: () => ({ x: 0.20, z: 1.0 }),
         getTimeSec: () => state.time,
-        getIMU: () => ({
-          yaw: state.robot.yaw,
-          yawDeg: (state.robot.yaw * 180) / Math.PI,
-          omega: state.robot.omega,
-          vFwd: state.robot.v,
-          vLat: state.robot.vLat || 0,
-          pitchDeg: ((state.robot.pitch || 0) * 180) / Math.PI,
-          x: state.robot.x,
-          z: state.robot.z,
-        }),
+        calibrateIMU: () => { state.imuSim.driftRad = 0; },
+        readToF4: () => readToF4(),
+        readPocketIR: () => readPocketIR(),
+        getIMU: () => {
+          const yawMeas = state.robot.yaw + (state.imuSim?.driftRad || 0);
+          return {
+            yaw: yawMeas,
+            yawDeg: (yawMeas * 180) / Math.PI,
+            yawTrue: state.robot.yaw,
+            driftDeg: ((state.imuSim?.driftRad || 0) * 180) / Math.PI,
+            omega: state.robot.omega,
+            vFwd: state.robot.v,
+            vLat: state.robot.vLat || 0,
+            pitchDeg: ((state.robot.pitch || 0) * 180) / Math.PI,
+            x: state.robot.x,
+            z: state.robot.z,
+          };
+        },
         imu: () => api.getIMU(),
         getBatteryVoltage: () => state.wasmTele?.busV ?? 11.1,
         getBatteryPct: () => state.wasmTele?.batPct ?? 100,
@@ -3203,6 +3432,8 @@ function loop(board) {
     });
 
     const MODEL_PRESETS = {
+      flagship_mecanum_nano: { frame: "dual_deck", wheelTpl: "mecanum_4w", theme: "carbon", dev: "u_scoop", rear: "none", sen: "tof4_ir", imu: "hwt101", board: "JETSON_NANO_STM32", strat: "mecanum_adrc_pro", bat: "3s_1500", w: 230, l: 230, gc: 18, rpm: 330, sw: 220, my: 2, lwd: 75, lws: -35, rwd: 75, rws: -35, ch: 250, cp: 30 },
+      flagship_diff_k230:    { frame: "dual_deck", wheelTpl: "diamond_4w", theme: "titanium", dev: "u_scoop", rear: "none", sen: "tof4_ir", imu: "bmi088", board: "K230_LINUX", strat: "mecanum_adrc_pro", bat: "3s_1500", w: 210, l: 190, gc: 18, rpm: 330, sw: 220, my: 2, lwd: 75, lws: -35, rwd: 75, rws: -35, ch: 250, cp: 30 },
       std_mecanum:    { frame: "dual_deck",   wheelTpl: "mecanum_4w",  theme: "carbon",   dev: "u_scoop",     rear: "none",          sen: "laser3",     bat: "3s_1500", w: 215, l: 235, gc: 18, rpm: 420, sw: 195, my: 2, lwd: 36, lws: 12, rwd: 36, rws: 12, ch: 185, cp: 22 },
       roller_blitz:   { frame: "low_rider",   wheelTpl: "mecanum_4w",  theme: "cobalt",   dev: "roller",      rear: "storage_bin",   sen: "stereo_cam", bat: "4s_2200", w: 210, l: 230, gc: 14, rpm: 540, sw: 210, my: 2, lwd: 30, lws: 12, rwd: 30, rws: 12, ch: 175, cp: 24 },
       tank_conveyor:  { frame: "armored_box", wheelTpl: "tracked_tank",theme: "olive",    dev: "conveyor",    rear: "counterweight", sen: "omni_ir",    bat: "4s_2200", w: 225, l: 245, gc: 20, rpm: 500, sw: 210, my: 2, lwd: 28, lws: 10, rwd: 28, rws: 10, ch: 205, cp: 25 },
@@ -3222,6 +3453,14 @@ function loop(board) {
       $("mScoopW").value = p.sw; $("mMountY").value = p.my;
       $("mLwD").value = p.lwd; $("mLwS").value = p.lws; $("mRwD").value = p.rwd; $("mRwS").value = p.rws;
       $("mCamH").value = p.ch; $("mCamP").value = p.cp;
+      if (p.imu && $("mImuType")) $("mImuType").value = p.imu;
+      if (p.board && $("boardType")) $("boardType").value = p.board;
+      if (p.strat && $("strategyPreset") && STRATEGIES[p.strat]) {
+        $("strategyPreset").value = p.strat;
+        if ($("codeLang")) $("codeLang").value = "js_sdk";
+        $("codeInput").value = STRATEGIES[p.strat];
+        compileStrategy();
+      }
       if ($("mWheelTemplate")) $("mWheelTemplate").value = p.wheelTpl;
       await applyWheelTemplate(p.wheelTpl, false);
       await syncModulesToRust();
@@ -3872,22 +4111,24 @@ function loop(board) {
 
     function runOfficialInspection() {
       const env = state.resolved?.envelope || [0.265, 0.225, 0.19];
-      const lMm = Math.round(env[0] * 1000), wMm = Math.round(env[1] * 1000), hMm = Math.round((Number($("mCamH")?.value) || 185) + 35);
-      const massKg = state.resolved?.total_mass ?? 1.47;
+      const lMm = Math.round(env[0] * 1000), wMm = Math.round(env[1] * 1000), hMm = Math.round((Number($("mCamH")?.value) || 250) + 35);
+      const massKg = state.resolved?.total_mass ?? 1.55;
+      const devKind = $("mDeviceKind")?.value || "u_scoop";
+      const legalMech = ["u_scoop", "roller", "brush", "plow_v", "none"].includes(devKind);
       const inBox = lMm <= 300 && wMm <= 300 && hMm <= 300;
-      const inWeight = massKg <= 3.0;
-      const inStart = state.robot.x >= GOAL.minX && state.robot.x <= GOAL.maxX + 0.08 && state.robot.z >= GOAL.minZ && state.robot.z <= GOAL.maxZ;
+      const inWeight = massKg < 2.5;
+      const inStart = state.robot.x >= GOAL.minX && state.robot.x <= GOAL.maxX + 0.12 && state.robot.z >= GOAL.minZ && state.robot.z <= GOAL.maxZ;
       const hasBoard = Boolean(state.board.loopFn || state.board.legacyFn);
-      const ok = inBox && inWeight && inStart && hasBoard;
+      const ok = inBox && inWeight && legalMech && inStart && hasBoard;
       state.referee.inspectedOk = ok;
       state.workshop.stepsDone[5] = ok;
       renderBuildSteps();
       const rep = $("inspectReport");
       if (rep) {
         rep.style.color = ok ? "var(--mint)" : "var(--red)";
-        rep.textContent = `${ok ? "✅ 官方检录通过" : "❌ 官方检录未通过"} | 尺寸 ${lMm}×${wMm}×${hMm}mm (≤300:${inBox ? "✓" : "超限"}) · 质量 ${massKg.toFixed(2)}kg (≤3.0:${inWeight ? "✓" : "超重"}) · 出发区(${inStart ? "✓" : "未归位"}) · 自主固件(${hasBoard ? "✓" : "未烧录"})`;
+        rep.textContent = `${ok ? "✅ 第十五届官方检录通过" : "❌ 官方检录未通过"} | 尺寸 ${lMm}×${wMm}×${hMm}mm (≤300:${inBox ? "✓" : "超限"}) · 质量 ${massKg.toFixed(2)}kg (<2.5:${inWeight ? "✓" : "超重"}) · 贴地滑推机构(${legalMech ? "✓" : "违规:禁止夹吸铲托"}) · 出发区(${inStart ? "✓" : "未归位"})`;
       }
-      log(ok ? "📋 [官方检录] 全部指标合格，允许进入正式比赛!" : "⚠️ [官方检录] 存在不合规项，请调整尺寸/重量/复位后重新检录");
+      log(ok ? "📋 [第十五届检录] 全部指标合格，允许进入 120s 正式对抗!" : "⚠️ [第十五届检录] 不合规（请检查 300mm / <2.5kg / 禁止夹持吸盘机构）");
       return ok;
     }
 
@@ -3993,16 +4234,76 @@ function loop(board) {
       log(`🚩 [官方裁判] 已执行人工复位至出发区（累计第 ${state.referee.resetCount} 次，罚时 +5s，总罚时 +${state.referee.penaltySec}s）`);
     });
 
+    $("runStepTestBtn")?.addEventListener("click", () => {
+      const mode = $("stepTestMode")?.value || "fwd";
+      const target = mode === "fwd" ? 0.8 : (mode === "lat" ? 0.5 : Math.PI * 0.5);
+      const wasRunning = state.running;
+      state.running = false;
+      state.imuSim.driftRad = 0;
+      initPieces();
+      const dt = 0.01, totalSteps = 120;
+      const samples = [];
+      let peak = 0, t10 = null, t90 = null, settleMs = 1200, maxYawDrift = 0;
+      const yaw0 = state.robot.yaw;
+      for (let k = 0; k < totalSteps; k++) {
+        stepImuDrift(dt);
+        let cmdV = 0, cmdLat = 0, cmdW = 0;
+        if (mode === "fwd") cmdV = target;
+        else if (mode === "lat") cmdLat = target;
+        else {
+          const err = target - (state.robot.yaw - yaw0);
+          cmdW = Math.max(-3.6, Math.min(3.6, err * 4.5 - state.robot.omega * 0.35));
+        }
+        if (state.wasmReady && state.wasm) {
+          state.wasm.wasm_step(dt, 1, cmdV, cmdLat, cmdW);
+          readWasmOut();
+        }
+        const val = mode === "fwd" ? state.robot.v : (mode === "lat" ? (state.robot.vLat || 0) : (state.robot.yaw - yaw0));
+        samples.push(val);
+        if (val > peak) peak = val;
+        if (t10 === null && val >= target * 0.10) t10 = k * 10;
+        if (t90 === null && val >= target * 0.90) t90 = k * 10;
+        if (Math.abs(val - target) > Math.abs(target) * 0.03) settleMs = (k + 1) * 10;
+        if (mode !== "yaw") maxYawDrift = Math.max(maxYawDrift, Math.abs((state.robot.yaw - yaw0) * 180 / Math.PI));
+      }
+      const riseMs = (t10 !== null && t90 !== null) ? Math.max(10, t90 - t10) : 1200;
+      const overshoot = Math.max(0, ((peak - target) / Math.max(1e-4, target)) * 100);
+      const tail = samples.slice(-20);
+      const steady = tail.reduce((a, b) => a + b, 0) / Math.max(1, tail.length);
+      const steadyErr = Math.abs(target - steady);
+      const imuDrift = Math.abs((state.imuSim.driftRad || 0) * 180 / Math.PI) * 100; // projected 120s drift
+      const imuName = $("mImuType")?.value || "hwt101";
+      const outTxt = `📈 [${mode.toUpperCase()} 1.2s实测] 上升 ${riseMs}ms · 超调 ${overshoot.toFixed(1)}% · 调节 ${settleMs}ms · 静差 ${steadyErr.toFixed(3)} · 偏航 ${maxYawDrift.toFixed(2)}° · ${imuName} 2min预估漂移 ${imuDrift.toFixed(2)}°`;
+      if ($("stepTestResult")) $("stepTestResult").textContent = outTxt;
+      log(outTxt);
+      initPieces();
+      state.running = wasRunning;
+    });
+
     renderBomCatalog();
     calcSliceEstimate();
     renderPrintedList();
     renderBuildSteps();
 
+    // 默认直接加载「🏆 你的旗舰麦轮方案 (Jetson Nano + STM32 + HWT101 + 4xToF + U型三连推斗 + ADRC三阶段固件)」
+    const defP = MODEL_PRESETS.flagship_mecanum_nano;
+    if (defP) {
+      $("mChassisStyle").value = defP.frame; $("mThemeColor").value = defP.theme;
+      $("mDeviceKind").value = defP.dev; $("mRearMod").value = defP.rear;
+      $("mSensorSuite").value = defP.sen; $("mBatterySpec").value = defP.bat;
+      if ($("mImuType")) $("mImuType").value = defP.imu;
+      if ($("boardType")) $("boardType").value = defP.board;
+      $("mChassisW").value = defP.w; $("mChassisL").value = defP.l;
+      $("mGroundClear").value = defP.gc; $("mRpm").value = defP.rpm;
+      $("mScoopW").value = defP.sw; $("mMountY").value = defP.my;
+      $("mLwD").value = defP.lwd; $("mLwS").value = defP.lws; $("mRwD").value = defP.rwd; $("mRwS").value = defP.rws;
+      $("mCamH").value = defP.ch; $("mCamP").value = defP.cp;
+    }
     state.customWheels = generateWheelLayout("symmetric_axles", 4);
     renderWheelList();
-    if ($("strategyPreset")) $("strategyPreset").value = "c_vision_pid";
-    if ($("codeLang")) $("codeLang").value = "arduino_c";
-    $("codeInput").value = STRATEGIES.c_vision_pid;
+    if ($("strategyPreset")) $("strategyPreset").value = "mecanum_adrc_pro";
+    if ($("codeLang")) $("codeLang").value = "js_sdk";
+    $("codeInput").value = STRATEGIES.mecanum_adrc_pro;
     compileStrategy();
     initPieces();
     initWasmPhysics();
