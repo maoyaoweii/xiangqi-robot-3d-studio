@@ -221,10 +221,19 @@ fn cmd_export_cad(fmt: &str, args: &[String]) {
 }
 
 fn cmd_serve(args: &[String]) {
-    let mut preferred_port: u16 = 8124;
-    let mut host = "127.0.0.1".to_string();
+    let env_port = env::var("SERVER_PORT")
+        .or_else(|_| env::var("PORT"))
+        .ok()
+        .and_then(|s| s.trim().parse::<u16>().ok());
+    let mut preferred_port: u16 = env_port.unwrap_or(8124);
+    let mut host = if env_port.is_some() {
+        "0.0.0.0".to_string()
+    } else {
+        "127.0.0.1".to_string()
+    };
     let mut web_root: Option<PathBuf> = None;
-    let mut no_open = false;
+    let mut no_open = env_port.is_some();
+    let mut allow_shutdown = env_port.is_none();
     let mut prefer_browser_tab = false;
     let mut start_page = "studio.html";
 
@@ -232,7 +241,7 @@ fn cmd_serve(args: &[String]) {
     while i < args.len() {
         match args[i].as_str() {
             "--port" | "-p" if i + 1 < args.len() => {
-                preferred_port = args[i + 1].parse().unwrap_or(8124);
+                preferred_port = args[i + 1].parse().unwrap_or(preferred_port);
                 i += 2;
             }
             "--host" if i + 1 < args.len() => {
@@ -245,6 +254,14 @@ fn cmd_serve(args: &[String]) {
             }
             "--no-open" | "--server" | "--headless" => {
                 no_open = true;
+                i += 1;
+            }
+            "--public" | "--no-shutdown" => {
+                no_open = true;
+                allow_shutdown = false;
+                if host == "127.0.0.1" {
+                    host = "0.0.0.0".to_string();
+                }
                 i += 1;
             }
             "--browser" => {
@@ -266,7 +283,7 @@ fn cmd_serve(args: &[String]) {
         preferred_port,
         web_root: web_root.clone(),
         mode: if no_open { "server".to_string() } else { "desktop".to_string() },
-        allow_shutdown: true,
+        allow_shutdown,
     };
 
     let mut server = match spawn_studio_server(cfg) {
